@@ -10,6 +10,7 @@ pandas = "*"
 matplotlib = "*"
 seaborn = "*"
 tqdm = "*"
+gym = "*"
 
 [dev-packages]
 
