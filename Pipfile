@@ -11,6 +11,8 @@ matplotlib = "*"
 seaborn = "*"
 tqdm = "*"
 gym = "*"
+tensorflow = "==2.10"
+ipywidgets = "*"
 
 [dev-packages]
 
