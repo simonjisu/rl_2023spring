@@ -40,8 +40,8 @@ def value_iteration(P_a, rewards, gamma, alpha=1.0, error=0.001, deterministic=T
         for a in range(N_ACTIONS):
           q_values[s][a] = rewards[s] + np.sum([gamma * P_a[s, s_to, a] * values[s_to] for s_to in range(N_STATES)])
           # to avoid log(0)
-          # max_q = np.max(q_values[s])
-          # values[s] = max_q + alpha*np.log(np.average(np.exp((1/alpha)*(q_values[s] - max_q))) + 1e-10)
+          # m = np.max((1/alpha)*q_values[s]) 
+          # values[s] = alpha*np.log(np.average(np.exp(m)) + m)
           values[s] = alpha*np.log(np.average(np.exp((1/alpha)*q_values[s])) + 1e-10)  
       
       if np.max(np.abs(values - values_tmp)) < error:
