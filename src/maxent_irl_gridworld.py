@@ -186,19 +186,15 @@ def run_maxent_irl(ARGS, init_start_pose=None):
       history[current_n_trajs]['rewards_new_T'] = rewards_new_T
       history[current_n_trajs]['values_new'] = values_new 
       history[current_n_trajs]['policy_new'] = policy_new
-
-      print(f'[INFO - {current_n_trajs:05d} ] Policy evaluation')
-      values = policy_evaluation(P_a, rewards_gt, policy_new, ARGS.gamma, error=ARGS.error)
-      history[current_n_trajs]['values'] = values
     
     else:
       print(f'[INFO - {current_n_trajs:05d} ] Generating a new demonstrations from Random Points')
       trajs_new = generate_demonstrations(gw, policy_gt, 
                                           n_trajs=ARGS.n_query, len_traj=ARGS.l_traj, rand_start=True, start_pos=None)
       
-      print(f'[INFO - {current_n_trajs:05d} ] Policy evaluation')
-      values = policy_evaluation(P_a, rewards_gt, policy, ARGS.gamma, error=ARGS.error)
-      history[current_n_trajs]['values'] = values
+    print(f'[INFO - {current_n_trajs:05d} ] Policy evaluation')
+    values = policy_evaluation(P_a, rewards_gt, policy, ARGS.gamma, error=ARGS.error)
+    history[current_n_trajs]['values'] = values
 
     trajs.extend(trajs_new)
     history[current_n_trajs]['trajs'] = trajs
@@ -206,10 +202,7 @@ def run_maxent_irl(ARGS, init_start_pose=None):
     current_n_trajs += ARGS.n_query
     
   # given estimated reward to get final values and policy
-  if ARGS.active:
-    values = policy_evaluation(P_a, rewards_gt, policy_new, ARGS.gamma, error=ARGS.error)
-  else:
-    values = policy_evaluation(P_a, rewards_gt, policy, ARGS.gamma, error=ARGS.error)
+  values = policy_evaluation(P_a, rewards_gt, policy, ARGS.gamma, error=ARGS.error)
   history['final']['values'] = values
   return history
 
