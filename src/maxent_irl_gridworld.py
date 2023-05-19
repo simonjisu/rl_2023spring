@@ -44,6 +44,14 @@ Step = namedtuple('Step','cur_state action next_state reward done')
 # N_STATES = H * W
 # N_ACTIONS = 5
 
+def draw_path(traj):
+    # Step = namedtuple('Step','cur_state action next_state reward done')
+    path = ''
+    for step in traj:
+        path += f'{step.cur_state}(a={step.action}, r={step.reward})->'
+
+    path = path[:-2]
+    return path
 
 def feature_coord(gw):
   N = gw.height * gw.width
@@ -146,7 +154,6 @@ def run_maxent_irl(ARGS, init_start_pose=None):
   history = defaultdict(dict)
   # use identity matrix as feature
   feat_map = np.eye(n_states)
-  np.random.seed(1)
   # initial trajectories always start from random position
   print('[INFO] Initialize trajectories')
   assert ARGS.n_query < ARGS.n_trajs, 'ARGS.n_query must be much more smaller than N_TRAJS'
@@ -154,8 +161,23 @@ def run_maxent_irl(ARGS, init_start_pose=None):
     trajs = generate_demonstrations(gw, policy_gt, 
                                     n_trajs=ARGS.n_query, len_traj=ARGS.l_traj, rand_start=True, start_pos=None)
   else:
-    trajs = generate_demonstrations(gw, policy_gt, 
-                                    n_trajs=ARGS.n_query, len_traj=ARGS.l_traj, rand_start=False, start_pos=init_start_pose)
+    if isinstance(init_start_pose[0], list) or isinstance(init_start_pose[0], tuple):
+      # multiple start points
+      trajs = []
+      for sp in init_start_pose:
+        t = generate_demonstrations(gw, policy_gt, 
+                                    n_trajs=ARGS.n_query, 
+                                    len_traj=ARGS.l_traj, 
+                                    rand_start=False, 
+                                    start_pos=sp)
+        trajs.extend(t)
+    else:
+      # type(init_start_pose[0]) == int
+      trajs = generate_demonstrations(gw, policy_gt, 
+                                      n_trajs=ARGS.n_query, 
+                                      len_traj=ARGS.l_traj, 
+                                      rand_start=False, 
+                                      start_pos=init_start_pose)
   history[0]['gw'] = gw
   history[0]['P_a'] = P_a
   history[0]['rewards_gt'] = rewards_gt
@@ -163,13 +185,14 @@ def run_maxent_irl(ARGS, init_start_pose=None):
   history[0]['policy_gt'] = policy_gt
   history[0]['trajs'] = trajs
   print(f'[INFO] Trajectory length(Include inital starting point) = {ARGS.l_traj + 1}, First trajectories.')
-  print(trajs[0])
+  print(draw_path(trajs[0]))
   print('[INFO] Start Learning')
   current_n_trajs = ARGS.n_query
   while current_n_trajs < (ARGS.n_trajs + ARGS.n_query):
     print(f'[INFO - {current_n_trajs:05d} ] Training MaxEnt IRL')
     rewards, policy = maxent_irl(feat_map, P_a, ARGS.gamma, trajs, lr=ARGS.learning_rate, n_iters=ARGS.n_iters, alpha=ARGS.alpha, error=ARGS.error)
     history[current_n_trajs]['rewards'] = rewards   # rewards map after IRL
+    history[current_n_trajs]['policy'] = policy   # policy after IRL
 
     if ARGS.active:
       print(f'[INFO - {current_n_trajs:05d} ] Finite Policy Iteration')
@@ -187,7 +210,7 @@ def run_maxent_irl(ARGS, init_start_pose=None):
       trajs_new = []
       for sp in start_points_new:
         t_new = generate_demonstrations(gw, policy_gt, 
-                                        n_trajs=ARGS.n_query, 
+                                        n_trajs=1, 
                                         len_traj=ARGS.l_traj, 
                                         rand_start=False, 
                                         start_pos=sp)
@@ -206,6 +229,7 @@ def run_maxent_irl(ARGS, init_start_pose=None):
     history[current_n_trajs]['values'] = values
 
     trajs.extend(trajs_new)
+    print(draw_path(trajs[-1]))
     current_n_trajs += ARGS.n_query
     
   # given estimated reward to get final values and policy
