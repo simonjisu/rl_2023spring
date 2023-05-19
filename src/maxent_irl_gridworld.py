@@ -206,8 +206,6 @@ def run_maxent_irl(ARGS, init_start_pose=None):
     history[current_n_trajs]['values'] = values
 
     trajs.extend(trajs_new)
-    history[current_n_trajs]['trajs'] = trajs
-
     current_n_trajs += ARGS.n_query
     
   # given estimated reward to get final values and policy
