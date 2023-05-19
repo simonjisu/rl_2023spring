@@ -14,7 +14,6 @@ Step = namedtuple('Step','cur_state action next_state reward done')
 # PARSER.add_argument('-g', '--gamma', default=0.8, type=float, help='discount factor')
 # PARSER.add_argument('-a', '--act_random', default=0.3, type=float, help='probability of acting randomly')
 # PARSER.add_argument('-t', '--n_trajs', default=100, type=int, help='number of expert trajectories')
-# PARSER.add_argument('-it', '--init_n_trajs', default=1, type=int, help='number of expert trajectories')
 # PARSER.add_argument('-l', '--l_traj', default=20, type=int, help='length of expert trajectory')
 # PARSER.add_argument('--rand_start', dest='rand_start', action='store_true', help='when sampling trajectories, randomly pick start positions')
 # PARSER.add_argument('--no-rand_start', dest='rand_start',action='store_false', help='when sampling trajectories, fix start positions')
@@ -34,7 +33,6 @@ Step = namedtuple('Step','cur_state action next_state reward done')
 # H = ARGS.height
 # W = ARGS.width
 # N_TRAJS = ARGS.n_trajs
-# INIT_N_TRAJS = ARGS.init_n_trajs  # only used in active learning setting
 # L_TRAJ = ARGS.l_traj
 # RAND_START = ARGS.rand_start
 # LEARNING_RATE = ARGS.learning_rate
@@ -132,7 +130,7 @@ def main(ARGS):
   rewards, _ = maxent_irl(feat_map, P_a, ARGS.gamma, trajs, ARGS.learning_rate, ARGS.n_iters)
   
   # given estimated reward to get final values and policy
-  values, policy = value_iteration(P_a, rewards, ARGS.gamma, error=0.01, deterministic=True)
+  values, policy = value_iteration(P_a, rewards, ARGS.gamma, error=ARGS.error, deterministic=True)
 
   history[0]['rewards'] = rewards
   history[0]['values'] = values
@@ -151,13 +149,13 @@ def run_maxent_irl(ARGS, init_start_pose=None):
   np.random.seed(1)
   # initial trajectories always start from random position
   print('[INFO] Initialize trajectories')
-  assert ARGS.init_n_trajs < ARGS.n_trajs, 'ARGS.init_n_trajs must be much more smaller than N_TRAJS'
+  assert ARGS.n_query < ARGS.n_trajs, 'ARGS.n_query must be much more smaller than N_TRAJS'
   if init_start_pose is None:
     trajs = generate_demonstrations(gw, policy_gt, 
-                                    n_trajs=ARGS.init_n_trajs, len_traj=ARGS.l_traj, rand_start=True, start_pos=None)
+                                    n_trajs=ARGS.n_query, len_traj=ARGS.l_traj, rand_start=True, start_pos=None)
   else:
     trajs = generate_demonstrations(gw, policy_gt, 
-                                    n_trajs=ARGS.init_n_trajs, len_traj=ARGS.l_traj, rand_start=False, start_pos=init_start_pose)
+                                    n_trajs=ARGS.n_query, len_traj=ARGS.l_traj, rand_start=False, start_pos=init_start_pose)
   history[0]['gw'] = gw
   history[0]['P_a'] = P_a
   history[0]['values_gt'] = values_gt
@@ -166,41 +164,52 @@ def run_maxent_irl(ARGS, init_start_pose=None):
   print(f'[INFO] Trajectory length(Include inital starting point) = {ARGS.l_traj + 1}, First trajectories.')
   print(trajs[0])
   print('[INFO] Start Learning')
-  current_n_trajs = ARGS.init_n_trajs
-  while current_n_trajs < (ARGS.n_trajs-ARGS.init_n_trajs):
+  current_n_trajs = ARGS.n_query
+  while current_n_trajs < (ARGS.n_trajs + ARGS.n_query):
     print(f'[INFO - {current_n_trajs:05d} ] Training MaxEnt IRL')
     rewards, policy = maxent_irl(feat_map, P_a, ARGS.gamma, trajs, lr=ARGS.learning_rate, n_iters=ARGS.n_iters, alpha=ARGS.alpha)
+    history[current_n_trajs]['rewards'] = rewards   # rewards map after IRL
+
     if ARGS.active:
       print(f'[INFO - {current_n_trajs:05d} ] Finite Policy Iteration')
       rewards_new_T, values_new, policy_new = finite_policy_iteration(P_a, policy, gw, ARGS.gamma, ARGS.l_traj)
+      
       print(f'[INFO - {current_n_trajs:05d} ] Request a demonstrations')
       # acquistion process
       start_point_new = gw.idx2pos(np.argmax(values_new))
       print('-- Values Map --')
       print(values_new.reshape(ARGS.height, ARGS.width, order='F'))
+      
       print(f'[INFO - {current_n_trajs:05d} ] Generating a new demonstrations from {start_point_new}')
       trajs_new = generate_demonstrations(gw, policy_gt, 
                                           n_trajs=ARGS.n_query, len_traj=ARGS.l_traj, rand_start=False, start_pos=start_point_new)
-      # after policy iteration
       history[current_n_trajs]['rewards_new_T'] = rewards_new_T
       history[current_n_trajs]['values_new'] = values_new 
       history[current_n_trajs]['policy_new'] = policy_new
+
+      print(f'[INFO - {current_n_trajs:05d} ] Policy evaluation')
+      values = policy_evaluation(P_a, rewards_gt, policy_new, ARGS.gamma, error=ARGS.error)
+      history[current_n_trajs]['values'] = values
+    
     else:
       print(f'[INFO - {current_n_trajs:05d} ] Generating a new demonstrations from Random Points')
       trajs_new = generate_demonstrations(gw, policy_gt, 
                                           n_trajs=ARGS.n_query, len_traj=ARGS.l_traj, rand_start=True, start_pos=None)
       
+      print(f'[INFO - {current_n_trajs:05d} ] Policy evaluation')
+      values = policy_evaluation(P_a, rewards_gt, policy, ARGS.gamma, error=ARGS.error)
+      history[current_n_trajs]['values'] = values
+
     trajs.extend(trajs_new)
     history[current_n_trajs]['trajs'] = trajs
-    history[current_n_trajs]['rewards'] = rewards   # rewards map
 
     current_n_trajs += ARGS.n_query
-    print(f'[INFO - {current_n_trajs:05d} ] Policy evaluation')
-    values = policy_evaluation(P_a, rewards_gt, policy_new, ARGS.gamma, error=0.01)
-    history[current_n_trajs]['values'] = values
-  
+    
   # given estimated reward to get final values and policy
-  values = policy_evaluation(P_a, rewards_gt, policy_new, ARGS.gamma, error=0.01)
+  if ARGS.active:
+    values = policy_evaluation(P_a, rewards_gt, policy_new, ARGS.gamma, error=ARGS.error)
+  else:
+    values = policy_evaluation(P_a, rewards_gt, policy, ARGS.gamma, error=ARGS.error)
   history['final']['values'] = values
   return history
 
@@ -219,7 +228,7 @@ def run_maxent_irl(ARGS, init_start_pose=None):
 #   rewards_gt = np.reshape(rmap_gt, H*W, order='F')
 #   P_a = gw.get_transition_mat()
 
-#   values_gt, policy_gt = value_iteration.value_iteration(P_a, rewards_gt, GAMMA, error=0.01, deterministic=True)
+#   values_gt, policy_gt = value_iteration.value_iteration(P_a, rewards_gt, GAMMA, error=ARGS.error, deterministic=True)
   
 #   # use identity matrix as feature
 #   feat_map = np.eye(N_STATES)
@@ -232,7 +241,7 @@ def run_maxent_irl(ARGS, init_start_pose=None):
 #   trajs = generate_demonstrations(gw, policy_gt, n_trajs=N_TRAJS, len_traj=L_TRAJ, rand_start=RAND_START)
 #   rewards = maxent_irl(feat_map, P_a, GAMMA, trajs, LEARNING_RATE, N_ITERS)
   
-#   values, _ = value_iteration.value_iteration(P_a, rewards, GAMMA, error=0.01, deterministic=True)
+#   values, _ = value_iteration.value_iteration(P_a, rewards, GAMMA, error=ARGS.error, deterministic=True)
 #   # plots
 #   plt.figure(figsize=(20,4))
 #   plt.subplot(1, 4, 1)
@@ -260,7 +269,7 @@ def init_grid_world(ARGS):
   rewards_gt = np.reshape(rmap_gt, ARGS.height*ARGS.width, order='F')
   P_a = gw.get_transition_mat()
   print('[INFO] Getting ground truth values and policy via value teration')
-  values_gt, policy_gt = value_iteration(P_a, rewards_gt, ARGS.gamma, error=0.01, deterministic=True)
+  values_gt, policy_gt = value_iteration(P_a, rewards_gt, ARGS.gamma, error=ARGS.error, deterministic=True)
   
   return gw, P_a, rewards_gt, values_gt, policy_gt
 
@@ -271,7 +280,6 @@ if __name__ == "__main__":
   PARSER.add_argument('-g', '--gamma', default=0.8, type=float, help='discount factor')
   PARSER.add_argument('-a', '--act_random', default=0.3, type=float, help='probability of acting randomly')
   PARSER.add_argument('-t', '--n_trajs', default=100, type=int, help='number of expert trajectories')
-  PARSER.add_argument('-it', '--init_n_trajs', default=1, type=int, help='number of expert trajectories')
   PARSER.add_argument('-l', '--l_traj', default=20, type=int, help='length of expert trajectory')
   PARSER.add_argument('--rand_start', dest='rand_start', action='store_true', help='when sampling trajectories, randomly pick start positions')
   PARSER.add_argument('--no-rand_start', dest='rand_start',action='store_false', help='when sampling trajectories, fix start positions')
@@ -282,6 +290,7 @@ if __name__ == "__main__":
   PARSER.add_argument('-al', '--alpha', default=1.0, type=float, help='temperature parameter for value iteration')
   PARSER.add_argument('-nq', '--n_query', default=1, type=int, help='number of queries to the expert(n_demonstrations)')
   PARSER.add_argument('-rm', '--r_max', default=1, type=int, help='maximum reward value')
+  PARSER.add_argument('-er', '--error', default=0.01, type=float, help='error threshold for policy evaluation and value iteration')
   ARGS = PARSER.parse_args()
   print(ARGS)
   main(ARGS)
