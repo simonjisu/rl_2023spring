@@ -26,7 +26,7 @@ def get_infos(history, active=False, search_idx=None):
         'policy_gt': history[0]['policy_gt'],
         'rewards': history[search_idx]['rewards'],
         'policy': history[search_idx]['policy'],
-        'trajs': history[0]['trajs'],
+        'trajs': history[search_idx]['trajs'],
         'values': history[search_idx]['values'],
     }
     if active:
@@ -121,7 +121,7 @@ def draw_evd(idxs_act, idxs_rand, vd_act, vd_rand, search_idx=None, file_path=No
     ax.fill_between(idxs_act, vd_act_mean - vd_act_std, vd_act_mean + vd_act_std, alpha=0.3)
 
     sns.lineplot(x=idxs_rand, y=vd_rand_mean, label='random')
-    ax.fill_between(idxs_rand, vd_rand_mean - vd_rand_std, vd_act_mean + vd_rand_std, alpha=0.3)
+    ax.fill_between(idxs_rand, vd_rand_mean - vd_rand_std, vd_rand_mean + vd_rand_std, alpha=0.3)
     
     ax.set_xlabel('Number of acquistions samples')
     ax.set_ylabel('Expected value difference')

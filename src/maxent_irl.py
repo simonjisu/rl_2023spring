@@ -13,8 +13,22 @@ import numpy as np
 from .mdp.value_iteration import value_iteration
 from .utils import normalize
 
+def gradient_clip(grad, c):
+  """"Gradient clipping
+  input: gradient
+  returns: cliped gradient with L1 norm <= c"""
+  if c == 0.0:
+    return grad
+  new_grad = grad.copy()
+  for i in range(len(grad)):
+    if grad[i] > c:
+      new_grad[i] = c
+    elif grad[i] < -c:
+      new_grad[i] = -c
+  return new_grad
 
-def compute_state_visition_freq(P_a: np.ndarray, gamma: float, trajs: list[np.ndarray], policy: np.ndarray, deterministic:bool=True):
+
+def compute_state_visition_freq(P_a: np.ndarray, gamma: float, trajs, policy: np.ndarray, deterministic:bool=True):
   """compute the expected states visition frequency p(s| theta, T) 
   using dynamic programming
 
@@ -49,7 +63,7 @@ def compute_state_visition_freq(P_a: np.ndarray, gamma: float, trajs: list[np.nd
 
 
 
-def maxent_irl(feat_map, P_a, gamma, trajs, lr, n_iters, alpha=1.0, error=0.01):
+def maxent_irl(feat_map, P_a, gamma, trajs, lr, c, lam, n_iters, alpha=1.0, error=0.01):
   """
   Maximum Entropy Inverse Reinforcement Learning (Maxent IRL)
 
@@ -66,7 +80,6 @@ def maxent_irl(feat_map, P_a, gamma, trajs, lr, n_iters, alpha=1.0, error=0.01):
   returns
     rewards     Nx1 vector - recoverred state rewards
   """
-  N_STATES, _, N_ACTIONS = np.shape(P_a)
 
   # init parameters
   theta = np.random.uniform(size=(feat_map.shape[1],))
@@ -80,9 +93,6 @@ def maxent_irl(feat_map, P_a, gamma, trajs, lr, n_iters, alpha=1.0, error=0.01):
 
   # training
   for iteration in range(n_iters):
-  
-    if iteration % (n_iters/20) == 0:
-      print('iteration: {}/{}'.format(iteration, n_iters))
     
     # compute reward function
     rewards = np.dot(feat_map, theta)
@@ -94,10 +104,15 @@ def maxent_irl(feat_map, P_a, gamma, trajs, lr, n_iters, alpha=1.0, error=0.01):
     svf = compute_state_visition_freq(P_a, gamma, trajs, policy, deterministic=False)
     
     # compute gradients
-    grad = feat_exp - feat_map.T.dot(svf)
+    grad = feat_exp - feat_map.T.dot(svf) - lam * theta
+    grad = gradient_clip(grad, c)
 
     # update params
     theta += lr * grad
+    if iteration % (n_iters/20) == 0:
+      print('iteration: {}/{}'.format(iteration, n_iters))
+      print('theta: \n {}'.format(theta.round(3).reshape(5, 5)))
+      print('grad: \n {}'.format(grad.round(3).reshape(5, 5)))
 
   rewards = np.dot(feat_map, theta)
   # return sigmoid(normalize(rewards))

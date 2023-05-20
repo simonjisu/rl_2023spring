@@ -74,9 +74,8 @@ def policy_evaluation(P_a, rewards, policy, gamma, error=0.001):
             new_value = 0.0
             for a in range(N_ACTIONS):
                 transition_probs = P_a[s, :, a]
-                rewards_next = np.sum(rewards * transition_probs)
                 values_next = np.sum(values * transition_probs)
-                new_value += policy[s, a] * (rewards_next + gamma * values_next)
+                new_value += policy[s, a] * (rewards[s] + gamma * values_next)
 
             values[s] = new_value
 

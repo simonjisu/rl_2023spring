@@ -42,11 +42,11 @@ def value_iteration(P_a, rewards, gamma, alpha=1.0, error=0.001, deterministic=T
           # to avoid log(0)
           # m = np.max((1/alpha)*q_values[s]) 
           # values[s] = alpha*np.log(np.average(np.exp(m)) + m)
-          values[s] = alpha*np.log(np.average(np.exp((1/alpha)*q_values[s])) + 1e-10)  
+        values[s] = alpha*np.log(np.sum(np.exp((1/alpha)*q_values[s])) + 1e-10)  
       
       if np.max(np.abs(values - values_tmp)) < error:
         break
-    policy = np.exp(q_values - values.reshape(-1, 1))/N_ACTIONS
+    policy = np.exp((q_values - values.reshape(-1, 1))/alpha)
 
   return values, policy
 

@@ -44,11 +44,13 @@ Step = namedtuple('Step','cur_state action next_state reward done')
 # N_STATES = H * W
 # N_ACTIONS = 5
 
-def draw_path(traj):
+def draw_path(traj, gw):
     # Step = namedtuple('Step','cur_state action next_state reward done')
     path = ''
+    
     for step in traj:
-        path += f'{step.cur_state}(a={step.action}, r={step.reward})->'
+        cur_state = gw.idx2pos(step.cur_state)
+        path += f'{cur_state}(a={step.action}, r={step.reward})->'
 
     path = path[:-2]
     return path
@@ -185,12 +187,14 @@ def run_maxent_irl(ARGS, init_start_pose=None):
   history[0]['policy_gt'] = policy_gt
   history[0]['trajs'] = trajs
   print(f'[INFO] Trajectory length(Include inital starting point) = {ARGS.l_traj + 1}, First trajectories.')
-  print(draw_path(trajs[0]))
+  print(draw_path(trajs[0], gw))
   print('[INFO] Start Learning')
   current_n_trajs = ARGS.n_query
   while current_n_trajs < (ARGS.n_trajs + ARGS.n_query):
     print(f'[INFO - {current_n_trajs:05d} ] Training MaxEnt IRL')
-    rewards, policy = maxent_irl(feat_map, P_a, ARGS.gamma, trajs, lr=ARGS.learning_rate, n_iters=ARGS.n_iters, alpha=ARGS.alpha, error=ARGS.error)
+    rewards, policy = maxent_irl(feat_map, P_a, ARGS.gamma, trajs, lr=ARGS.learning_rate, c = ARGS.grad_clip, lam = ARGS.lam, n_iters=ARGS.n_iters, alpha=ARGS.alpha, error=ARGS.error)
+    print('--Reward Map (Recovered)--')
+    print(rewards.reshape(ARGS.height, ARGS.width, order='F'))
     history[current_n_trajs]['rewards'] = rewards   # rewards map after IRL
     history[current_n_trajs]['policy'] = policy   # policy after IRL
 
@@ -203,7 +207,7 @@ def run_maxent_irl(ARGS, init_start_pose=None):
       # if n_query > 1 then we need to select the n_query points
       query_idxs = np.argsort(values_new)[::-1][:ARGS.n_query]
       start_points_new = [gw.idx2pos(idx) for idx in query_idxs]
-      print('-- Values Map --')
+      print('-- Acquisition Function Map --')
       print(values_new.reshape(ARGS.height, ARGS.width, order='F'))
       
       print(f'[INFO - {current_n_trajs:05d} ] Generating a new demonstrations from {start_points_new}')
@@ -218,7 +222,7 @@ def run_maxent_irl(ARGS, init_start_pose=None):
       history[current_n_trajs]['rewards_new_T'] = rewards_new_T
       history[current_n_trajs]['values_new'] = values_new 
       history[current_n_trajs]['policy_new'] = policy_new
-    
+
     else:
       print(f'[INFO - {current_n_trajs:05d} ] Generating a new demonstrations from Random Points')
       trajs_new = generate_demonstrations(gw, policy_gt, 
@@ -229,7 +233,8 @@ def run_maxent_irl(ARGS, init_start_pose=None):
     history[current_n_trajs]['values'] = values
 
     trajs.extend(trajs_new)
-    print(draw_path(trajs[-1]))
+    history[current_n_trajs]['trajs'] = trajs_new
+    print(draw_path(trajs[-1], gw))
     current_n_trajs += ARGS.n_query
     
   # given estimated reward to get final values and policy
