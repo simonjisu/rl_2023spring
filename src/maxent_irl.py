@@ -111,8 +111,8 @@ def maxent_irl(feat_map, P_a, gamma, trajs, lr, c, lam, n_iters, alpha=1.0, erro
     theta += lr * grad
     if iteration % (n_iters/20) == 0:
       print('iteration: {}/{}'.format(iteration, n_iters))
-      print('theta: \n {}'.format(theta.round(3).reshape(5, 5)))
-      print('grad: \n {}'.format(grad.round(3).reshape(5, 5)))
+      # print('theta: \n {}'.format(theta.round(3).reshape(6, 6)))
+      # print('grad: \n {}'.format(grad.round(3).reshape(6, 6)))
 
   rewards = np.dot(feat_map, theta)
   # return sigmoid(normalize(rewards))

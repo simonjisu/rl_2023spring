@@ -290,8 +290,9 @@ def init_grid_world(ARGS):
   # rmap_gt is the ground truth for rewards
   print('[INFO] Initialize Grid World')
   rmap_gt = np.zeros([ARGS.height, ARGS.width])
-  rmap_gt[ARGS.height-1, ARGS.width-1] = ARGS.r_max
-  rmap_gt[0, 0] = ARGS.r_max / 2
+  rmap_gt[ARGS.height-2, ARGS.width-2] = ARGS.r_max
+  rmap_gt[0, ARGS.width-1] = ARGS.r_max / 2
+  rmap_gt[1, 1] = ARGS.r_max / 2
 
   gw = GridWorld(rmap_gt, {}, 1 - ARGS.act_random)
 
