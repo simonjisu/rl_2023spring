@@ -132,3 +132,55 @@ def draw_evd(idxs_act, idxs_rand, vd_act, vd_rand, search_idx=None, file_path=No
     if file_path is not None:
         fig.savefig((Path(file_path) / f'evd.png'))
     plt.show()
+    
+def draw_acq_maps_w_trajs(args, info_dict, traj, num_trajs=None, file_path=None):
+    H, W = args.height, args.width
+    scale = 0.001
+    arrows = {0:(1,0), 1:(-1,0), 3:(0,1),2:(0,-1), 4:(0,0)}
+    colors = ['w', 'g', 'y', 'r']
+
+    titles = {
+        'values': 'Value Map (Recovered)',
+        'values_new': 'Value Map (Acquisition)',
+    }
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+    gw = traj[0]['gw']
+
+    traj_dict = {}
+    for e in range(num_trajs):
+        traj_dict[e] = []
+        for step in traj[0]['trajs'][e]:
+            cur_state = gw.idx2pos(step.cur_state)
+            traj_dict[e].append((cur_state, step.action))
+
+    for (key, title), ax in zip(titles.items(), axes.flatten()):
+        ax.set_title(title)
+        if key == 'values':
+            sns.heatmap(reshaper(args, info_dict[key]), annot=True, fmt = '.2f', ax = ax)
+            for t in ax.texts:
+                trans = t.get_transform()
+                offs = matplotlib.transforms.ScaledTranslation( 0, -0.25,
+                                matplotlib.transforms.IdentityTransform())
+                t.set_transform( offs + trans )
+            for e in range(num_trajs):
+                for step in traj_dict[e]:
+                    print(e, step)
+                    if step[1] == 4:
+                        ax.plot(step[0][0]+0.5, step[0][1]+0.65, colors[e]+'o')
+                    else:
+                        ax.arrow(step[0][0]+0.5, step[0][1]+0.65, scale*arrows[step[1]][0], scale*arrows[step[1]][1], head_width=0.1, color = colors[e])
+                    # break
+            x, y = gw.idx2pos(np.argmax(reshaper(args, traj[num_trajs]['values_new'])))
+            ax.plot(x+0.5, y+0.5, 'bo')
+            print(gw.idx2pos(np.argmax(reshaper(args, traj[num_trajs]['values_new']))))
+        else:
+            sns.heatmap(reshaper(args, traj[num_trajs]['values_new']), annot=True, fmt='.2f', ax=ax)
+    suptitle = 'Algorithm'
+    # if num_trajs is not None:
+    #     suptitle += f' (N_trajs={num_trajs}+1)'
+    fig.suptitle(suptitle, fontsize=16)
+    plt.tight_layout()
+    if file_path is not None:
+        fig.savefig((Path(file_path) / f'algorithm.png'))
+    plt.show()
+    
