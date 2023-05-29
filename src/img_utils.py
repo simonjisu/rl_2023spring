@@ -2,132 +2,166 @@ import numpy as np
 import seaborn as sns
 from pathlib import Path
 import matplotlib.pyplot as plt
+import matplotlib
 from matplotlib.colors import ListedColormap
+import math
 
-def get_infos(history, active=False, search_idx=None):
+
+
+def get_evd(history):
     values_gt = history[0]['values_gt']
     idxs = list(history.keys())[1:-1]
-    all_values_diff = {'mean': [], 'std': []}
+    evds = []
     for i in idxs:
-        vd_mean = np.abs(history[i]['values'] - values_gt).mean()
-        vd_std = np.abs(history[i]['values'] - values_gt).std()
-        all_values_diff['mean'].append(vd_mean)
-        all_values_diff['std'].append(vd_std)
+        vd_mean = np.abs(values_gt - history[i]['values']).mean()
+        evds.append(vd_mean)
+    return np.array(evds)
+
+class Visualizer:
     
-    if search_idx is None:
-        search_idx = idxs[-1]
-    else:
-        if search_idx not in idxs:
-            raise KeyError(f'last_idx should be in available idxs: {idxs}')
+    def __init__(self, history, file_path = None):
+        self.history = history
+        self.file_path = file_path
+        self.args = history[0]['args']
+        self.active = self.args.active
+        self.max_val, self.min_val = math.ceil(np.max(history[0]['values_gt'])), math.floor(np.min(history[0]['values_gt']))
+        self.max_r, self.min_r = math.ceil(np.max(history[0]['rewards_gt'])), math.floor(np.min(history[0]['rewards_gt']))
+    
+    def reshaper(self, data):
+        return np.reshape(data, (self.args.height, self.args.width), order='F')
+    
+    def get_infos(self, search_idx):
+        info_dict = {
+            'rewards_gt': self.history[0]['rewards_gt'],
+            'values_gt': self.history[0]['values_gt'],
+            'policy_gt': self.history[0]['policy_gt'],
+            'args': self.history[0]['args'],
+            'rewards': self.history[search_idx]['rewards'],
+            'policy': self.history[search_idx]['policy'],
+            'trajs': self.history[search_idx]['trajs'],
+            'values': self.history[search_idx]['values'],
+        }
+        if self.active:
+            info_dict['rewards_new_T'] = self.history[search_idx]['rewards_new_T']
+            info_dict['values_new'] = self.history[search_idx]['values_new']
+            info_dict['policy_new'] = self.history[search_idx]['policy_new']
 
-    info_dict = {
-        'rewards_gt': history[0]['rewards_gt'],
-        'values_gt': history[0]['values_gt'],
-        'policy_gt': history[0]['policy_gt'],
-        'rewards': history[search_idx]['rewards'],
-        'policy': history[search_idx]['policy'],
-        'trajs': history[search_idx]['trajs'],
-        'values': history[search_idx]['values'],
-    }
-    if active:
-        info_dict['rewards_new_T'] = history[search_idx]['rewards_new_T']
-        info_dict['values_new'] = history[search_idx]['values_new']
-        info_dict['policy_new'] = history[search_idx]['policy_new']
+        return info_dict
+    
+    def draw_value_maps(self, search_idx):
+        info_dict = self.get_infos(search_idx)
+        fig, axes = plt.subplots(1, 4, figsize=(20, 4), dpi=110)
+        titles = {
+            'rewards_gt': 'Rewards Map (Ground Truth)',
+            'values_gt': 'Value Map (Ground Truth)',
+            'rewards': 'Rewards Map (Recovered)',
+            'values': 'Value Map (Recovered)',
+        }
+        for (key, title), ax in zip(titles.items(), axes.flatten()):
+            ax.set_title(title)
+            if 'Value' in title:
+                vmax, vmin = self.max_val, self.min_val
+            else:
+                vmax, vmin = self.max_r, self.min_r
+            sns.heatmap(self.reshaper(info_dict[key]), vmax = vmax, vmin = vmin, annot=True, fmt='.2f', ax=ax)
 
-    return idxs, all_values_diff, info_dict
-
-def reshaper(args, data):
-    return np.reshape(data, (args.height, args.width), order='F')
-
-def draw_maps(args, info_dict, active=False, search_idx=None, file_path=None):
-    fig, axes = plt.subplots(1, 4, figsize=(20, 4), dpi=110)
-    titles = {
-        'rewards_gt': 'Rewards Map (Ground Truth)',
-        'values_gt': 'Value Map (Ground Truth)',
-        'rewards': 'Rewards Map (Recovered)',
-        'values': 'Value Map (Recovered)',
-    }
-    for (key, title), ax in zip(titles.items(), axes.flatten()):
-        ax.set_title(title)
-        sns.heatmap(reshaper(args, info_dict[key]), annot=True, fmt='.2f', ax=ax)
-
-    suptitle = 'Active Sampling' if active else 'Random Sampling'
-    if search_idx is not None:
+        suptitle = 'Active Sampling' if self.active else 'Random Sampling'
         suptitle += f' (N_trajs={search_idx})'
-    fig.suptitle(suptitle, fontsize=16)
-    plt.tight_layout()
-    if file_path is not None:
-        fig.savefig((Path(file_path) / f'maps_{"active" if active else "random"}.png'))
-    plt.show()
+        fig.suptitle(suptitle, fontsize=16)
+        plt.tight_layout()
+        if self.file_path is not None:
+            fig.savefig((Path(self.file_path) / f'value_maps_{"active" if self.active else "random"}.png'))
+        plt.show()
+        return None
 
-def draw_policy(args, policy_mat, ax, H, W):
-    dirs = {0: '>', 1: '<', 2: 'v', 3: '^', 4: '*'}
-    argmax_policy = np.argmax(policy_mat, axis=1)
-    pi_dirs = np.array(list(map(dirs.get, argmax_policy)))
-    sns.heatmap(reshaper(args, argmax_policy), 
-                annot=False, fmt='.2f', linewidths=1.0, cbar=False, cmap=ListedColormap(['white']), ax=ax)
-    for i in range(H):
-        for j in range(W):
-            text = ax.text(
-                j+0.5, i+0.5, reshaper(args, pi_dirs).reshape([H, W], order='F')[i, j],
-                ha="center", va="center", color="k", fontsize=20)
+    def draw_acq_maps(self, search_idx):
+        info_dict = self.get_infos(search_idx)
+        fig, axes = plt.subplots(1, 4, figsize=(20, 4), dpi=110)
+        titles = {
+            'rewards_gt': 'Rewards Map (Ground Truth)',
+            'rewards': 'Rewards Map (Recovered)',
+            'rewards_new_T': 'Policy Entropy Map',
+            'values_new': 'Acquisition function Map',
+        }
+        for (key, title), ax in zip(titles.items(), axes.flatten()):
+            if 'Reward' in title:
+                vmax, vmin = self.max_r, self.min_r
+            else:
+                vmax, vmin = None, None
+            ax.set_title(title)
+            sns.heatmap(self.reshaper(info_dict[key]), vmax = vmax, vmin = vmin, annot=True, fmt='.2f', ax=ax)
 
-def draw_acq_maps(args, info_dict, search_idx=None, file_path=None):
-    H, W = args.height, args.width
-    
+        suptitle = 'Acquisition Map'
+        suptitle += f' (N_trajs={search_idx})'
+        fig.suptitle(suptitle, fontsize=16)
+        plt.tight_layout()
+        if self.file_path is not None:
+            fig.savefig((Path(self.file_path) / f'acq_maps.png'))
+        plt.show()
 
-    titles = {
-        'rewards_gt': 'Rewards Map (Ground Truth)',
-        'rewards': 'Rewards Map (Recovered)',
-        'policy': 'Policy Map (Recovered)',
-        'rewards_new_T': 'Rewards Map (Acquisition)',
-        'values_new': 'Value Map (Acquisition)',
-        'policy_new': 'Policy Map (Acquisition)'
-    }
-    fig, axes = plt.subplots(2, 3, figsize=(12, 8))
-    # axes_filtered = [ax for i, ax in enumerate(axes.flatten()) if i != 2]
-    # axes[0, 2].axis('off')
-    for (key, title), ax in zip(titles.items(), axes.flatten()):
-        ax.set_title(title)
-        if key in ['policy_new', 'policy']:
-            draw_policy(args, info_dict[key], ax, H, W)
-        else:
-            sns.heatmap(reshaper(args, info_dict[key]), annot=True, fmt='.2f', ax=ax)
-    suptitle = 'Rewards Map Comparison '
-    if search_idx is not None:
-        suptitle += f' (N_trajs={search_idx}+1)'
-    fig.suptitle(suptitle, fontsize=16)
-    plt.tight_layout()
-    if file_path is not None:
-        fig.savefig((Path(file_path) / f'maps_acq_rewards.png'))
-    plt.show()
+    def draw_policy_maps(self, search_idx):
+        info_dict = self.get_infos(search_idx)
+        fig, axes = plt.subplots(1, 4, figsize=(20, 4), dpi=110)
+        titles = {
+            'values_gt': 'Value Map (Ground Truth)',
+            'policy_gt': 'Policy Map (Ground Truth)',
+            'values': 'Value Map (Recovered)',
+            'policy': 'Policy Map (Recovered)',
+        }
+        dirs = {0: '>', 1: '<', 2: 'v', 3: '^', 4: '*'}
+        for (key, title), ax in zip(titles.items(), axes.flatten()):
+            ax.set_title(title)
+            if key in ['policy_gt', 'policy']:
+                if key == 'policy_gt':
+                    argmax_policy = info_dict[key]
+                    max_policy = np.ones(np.shape(argmax_policy))
+                else:
+                    argmax_policy = np.argmax(info_dict[key], axis=1)
+                    max_policy = np.max(info_dict[key], axis=1)
+                pi_dirs = np.array(list(map(dirs.get, argmax_policy)))
+                sns.heatmap(self.reshaper(max_policy), vmin = 0, vmax = 1,
+                annot=False, ax=ax)
+                for i in range(self.args.height):
+                    for j in range(self.args.width):
+                        text = ax.text(
+                            j+0.5, i+0.5, self.reshaper(pi_dirs)[i, j],
+                            ha="center", va="center", color="k", fontsize=20)
+            else:
+                sns.heatmap(self.reshaper(info_dict[key]), vmin = self.min_val, vmax = self.max_val,
+                            annot=True, fmt='.2f', ax=ax)
+        suptitle = 'Active Sampling' if self.active else 'Random Sampling'
+        suptitle += f' (N_trajs={search_idx})'
+        fig.suptitle(suptitle, fontsize=16)
+        plt.tight_layout()
+        if self.file_path is not None:
+            fig.savefig((Path(self.file_path) / f'policy_maps.png'))
+        plt.show()
+        return None
 
-def draw_evd(idxs_act, idxs_rand, vd_act, vd_rand, search_idx=None, file_path=None):
+def draw_evd(evd_act, evd_rand,file_path=None):
+    '''evd_act.shape = evd_rand.shape = (# of experiments, n_trajs)'''
     title = 'Expected value difference'
-    if search_idx is not None:
-        title += f' (N_trajs={search_idx})'
-    if search_idx is None:
-        search_idx = len(idxs_act)
-    vd_act_mean = np.array(vd_act['mean'])[:search_idx]
-    vd_act_std = np.array(vd_act['std'])[:search_idx]
-    vd_rand_mean = np.array(vd_rand['mean'])[:search_idx]
-    vd_rand_std = np.array(vd_rand['std'])[:search_idx]
-    idxs_act = idxs_act[:search_idx]
-    idxs_rand = idxs_rand[:search_idx]
+    n_trajs = len(evd_act[0])
+    idxs = np.arange(1, n_trajs+1, 1)
+    evd_act_mean = evd_act.mean(axis = 0)
+    evd_act_std = evd_act.std(axis = 0)
+    evd_rand_mean = evd_rand.mean(axis = 0)
+    evd_rand_std = evd_rand.std(axis = 0)
 
-    fig, ax = plt.subplots(figsize=(8, 4))
 
-    sns.lineplot(x=idxs_act, y=vd_act_mean, label='active')
-    ax.fill_between(idxs_act, vd_act_mean - vd_act_std, vd_act_mean + vd_act_std, alpha=0.3)
+    fig, ax = plt.subplots(figsize=(10, 4))
 
-    sns.lineplot(x=idxs_rand, y=vd_rand_mean, label='random')
-    ax.fill_between(idxs_rand, vd_rand_mean - vd_rand_std, vd_rand_mean + vd_rand_std, alpha=0.3)
+    sns.lineplot(x=idxs, y=evd_act_mean, label='active')
+    ax.fill_between(idxs, evd_act_mean - evd_act_std, evd_act_mean + evd_act_std, alpha=0.3)
+
+    sns.lineplot(x=idxs, y=evd_rand_mean, label='random')
+    ax.fill_between(idxs, evd_rand_mean - evd_rand_std, evd_rand_mean + evd_rand_std, alpha=0.3)
     
     ax.set_xlabel('Number of acquistions samples')
     ax.set_ylabel('Expected value difference')
     
     ax.set_title(title)
-    # ax.set_xticks(idxs_act)
+    ax.set_xticks(idxs)
     ax.legend()
     if file_path is not None:
         fig.savefig((Path(file_path) / f'evd.png'))
