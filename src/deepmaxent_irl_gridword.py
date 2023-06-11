@@ -3,6 +3,7 @@ from collections import defaultdict
 from .GridWorldMDP.utils import draw_path, generate_demonstrations, init_grid_world
 from .deepmaxent_irl import deepmaxent_irl
 from .GridWorldMDP.policy_iteration import finite_policy_iteration, policy_evaluation
+from IPython.display import clear_output
 
 def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], init_start_pos=None):
     """_summary_
@@ -106,5 +107,6 @@ def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], in
         history[current_n_trajs]['trajs'] = trajs_new
         print(f'{current_n_trajs}th trajectories.')
         print(draw_path(trajs_new[0], gw))
-    
+        if args.verbose == 2:
+            clear_output(wait=False)
     return history
