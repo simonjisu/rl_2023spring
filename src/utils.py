@@ -13,7 +13,7 @@ def normalize(vals):
   """
   min_val = np.min(vals)
   max_val = np.max(vals)
-  return (vals - min_val) / (max_val - min_val)
+  return (vals - min_val) / ((max_val - min_val) + 1e-10)
 
 
 def sigmoid(xs):
