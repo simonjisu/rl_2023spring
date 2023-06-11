@@ -141,10 +141,10 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
                                     gamma=args.gamma, 
                                     alpha=args.alpha, 
                                     error=args.error, 
-                                    deterministic=False)
+                                    deterministic=True)
 
         # propagate policy: expected state visitation frequencies
-        mu_exp = compute_state_visition_freq(P_a, trajs, policy, deterministic=False)
+        mu_exp = compute_state_visition_freq(P_a, trajs, policy, deterministic=True)
 
         # compute gradient on rewards
         grad_r = mu_D - mu_exp

@@ -9,6 +9,34 @@
 
 import numpy as np
 
+# def softmax(x):
+#   """Compute softmax values for each sets of scores in x."""
+#   e_x = np.exp(x - np.max(x))
+#   return e_x / e_x.sum(axis=0) # only difference
+
+# def approximate_value_iteration(P_a, rewards, gamma, alpha=1.0, error=0.001, deterministic=True):
+#   N_STATES, _, N_ACTIONS = np.shape(P_a)
+#   values = np.zeros([N_STATES])
+#   q_values = np.zeros((N_STATES, N_ACTIONS))
+#   while True:
+#     values_tmp = values.copy()
+#     for s in range(N_STATES):
+#       for a in range(N_ACTIONS):
+#         q_values[s, a] = sum([P_a[s, s_to, a] * (rewards[s] + gamma * values[s_to]) for s_to in range(N_STATES)])
+#       if deterministic:
+#         new_values = np.max(q_values, axis=1)
+#       else:
+#         new_values = np.log(np.sum(np.exp(q_values / alpha), axis=1))
+      
+#       if np.max(np.abs(new_values - values_tmp)) < error:
+#         break
+
+#       values = new_values
+
+#     policy = np.exp((q_values - values.reshape(-1, 1))/alpha)
+#     return values, policy
+
+          
 def value_iteration(P_a, rewards, gamma, alpha=1.0, error=0.001, deterministic=True):
   N_STATES, _, N_ACTIONS = np.shape(P_a)
   # max_reward = np.max(rewards)
