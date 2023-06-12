@@ -3,6 +3,9 @@ import argparse
 def get_parser():
     PARSER = argparse.ArgumentParser(description=None)
     PARSER.add_argument('-exp', '--exp_name', type=str, help='base arguments')
+    PARSER.add_argument('-gs', '--grid_size', default=5, type=int, help='size of the objectworld(square)')
+    PARSER.add_argument('-nobj', '--n_objects', default=3, type=int, help='number of objects in objectworld')
+    PARSER.add_argument('-nc', '--n_colours', default=3, type=int, help='number of colours objects can have')
     PARSER.add_argument('-hei', '--height', default=5, type=int, help='height of the gridworld')
     PARSER.add_argument('-wid', '--width', default=5, type=int, help='width of the gridworld')
     PARSER.add_argument('-g', '--gamma', default=0.8, type=float, help='discount factor')

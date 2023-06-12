@@ -41,6 +41,7 @@ def value_iteration(P_a, rewards, gamma, alpha=1.0, error=0.001, deterministic=T
   N_STATES, _, N_ACTIONS = np.shape(P_a)
   # max_reward = np.max(rewards)
   # rewards -= max_reward
+  # P_a shape: N_States X N_States X N_Actions
   values = np.zeros([N_STATES])
   if deterministic:
     # estimate values
@@ -48,7 +49,8 @@ def value_iteration(P_a, rewards, gamma, alpha=1.0, error=0.001, deterministic=T
       values_tmp = values.copy()
 
       for s in range(N_STATES):
-        values[s] = max([
+        for a in range(N_ACTIONS):
+          values[s] = max([
           sum([P_a[s, s1, a]*(rewards[s] + gamma*values_tmp[s1]) for s1 in range(N_STATES)]) 
           for a in range(N_ACTIONS)])
 

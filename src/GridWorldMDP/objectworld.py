@@ -41,7 +41,7 @@ class OWObject(object):
         return "<OWObject (In: {}) (Out: {})>".format(self.inner_colour,
                                                       self.outer_colour)
 
-class Objectworld(Gridworld):
+class Objectworld(GridWorld):
     """
     Objectworld MDP.
     """
@@ -60,6 +60,7 @@ class Objectworld(Gridworld):
 
         # self.actions = ((1, 0), (0, 1), (-1, 0), (0, -1), (0, 0))
         # self.n_actions = len(self.actions)
+        self.grid_size = grid_size
         self.n_objects = n_objects
         self.n_colours = n_colours
 
@@ -191,9 +192,13 @@ class Objectworld(Gridworld):
         return 0
 
     def reward_update(self):
-        for i in self.grid:
-            x, y = self.idx2pos(i)
-            self.gird[x][y] = self.reward(i)
+        for x in range(self.grid_size):
+            for y in range(self.grid_size):
+                i = self.pos2idx((x,y))
+                self.grid[x][y] = self.reward(i)
+        # for i in self.grid:
+        #     x, y = self.idx2pos(i)
+        #     self.gird[x][y] = self.reward(i)
         return self.grid
 
 
