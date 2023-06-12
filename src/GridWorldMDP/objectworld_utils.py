@@ -57,15 +57,16 @@ def generate_demonstrations(ow, policy, n_trajs=100, len_traj=20, rand_start=Fal
         trajs.append(episode)
     return trajs
 
-def init_object_world(args, coor_rates: list[tuple[tuple[int, int], float]]):
+def init_object_world(args):
     # init the objectworld
-    # return : 
+    # args should contain : grid_size, n_objects, n_colours, act_random
+    # return : Object world, transition matrix, ground truth value map, ground truth policy, feature_map
     print('[INFO] Initialize Object World')
 
     ow = Objectworld(args.grid_size, args.n_objects, args.n_colours, 1 - args.act_random)
     rewards_gt =ow.reward_update()
     feature_map = ow.feature_matrix()
-    
+
     print('[INFO] Getting ground truth values and policy via value iteration')
     values_gt, policy_gt = value_iteration(P_a, rewards_gt, args.gamma, error=args.error, deterministic=True)
 
