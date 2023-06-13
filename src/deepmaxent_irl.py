@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 
 from .GridWorldMDP.value_iteration import value_iteration
-from .utils import normalize
 from tqdm import tqdm as tqdm_progressbar
 from tqdm.notebook import tqdm as tqdm_notebook_progressbar
 
@@ -115,6 +114,7 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
     """
     device = torch.device(args.device)
     N_STATES, _, N_ACTIONS = np.shape(P_a)
+    
 
     model = DeepIRLFC(input_dim=feat_map.shape[1], hiddens=args.hiddens, ouptut_dim=1).to(device)
     
@@ -196,5 +196,5 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
                                 deterministic=False)
     # print(f'unnormed rewards')
     # print(rewards_numpy.reshape(args.height, args.width, order='F'))
-    
-    return normalize(rewards_numpy), policy, l2_loss
+    # return rewards_numpy, policy, l2_loss
+    return rewards_numpy, policy, l2_loss

@@ -11,7 +11,6 @@ Modified from Yiren Lu (luyirenmax@gmail.com), May 2017
 '''
 import numpy as np
 from .GridWorldMDP.value_iteration import value_iteration
-from .utils import normalize
 from tqdm import tqdm as tqdm_progressbar
 from tqdm.notebook import tqdm as tqdm_notebook_progressbar
 
@@ -85,7 +84,6 @@ def maxent_irl(feat_map, P_a, trajs, args):#, gamma, lr, c, lam, n_iters, alpha=
     returns
         rewards     Nx1 vector - recoverred state rewards
     """
-
     # init parameters
     theta = np.random.uniform(size=(feat_map.shape[1],))
 
@@ -128,6 +126,6 @@ def maxent_irl(feat_map, P_a, trajs, args):#, gamma, lr, c, lam, n_iters, alpha=
     rewards = np.dot(feat_map, theta)
     _, policy = value_iteration(P_a, rewards, args.gamma, alpha=args.alpha, error=args.error, deterministic=False)
 
-    return normalize(rewards), policy
+    return rewards, policy
 
 

@@ -41,6 +41,9 @@ class OWObject(object):
         return "<OWObject (In: {}) (Out: {})>".format(self.inner_colour,
                                                       self.outer_colour)
 
+    def __repr__(self) -> str:
+        return self.__str__()
+
 class Objectworld(GridWorld):
     """
     Objectworld MDP.
@@ -94,7 +97,7 @@ class Objectworld(GridWorld):
         i: State int.
         discrete: Whether the feature vectors should be discrete (default True).
             bool.
-        -> Feature vector.
+        -> Feature vector. size=(2*n_colours) NumPy array.
         """
 
         sx, sy = self.idx2pos(i)

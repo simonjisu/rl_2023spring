@@ -64,7 +64,7 @@ class Visualizer:
             else:
                 vmax, vmin = self.max_r, self.min_r
             sns.heatmap(self.reshaper(info_dict[key]), vmax = vmax, vmin = vmin, annot=True, fmt='.2f', ax=ax)
-
+            
         suptitle = 'Active Sampling' if self.active else 'Random Sampling'
         suptitle += f' (N_trajs={search_idx})'
         fig.suptitle(suptitle, fontsize=16)

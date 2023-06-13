@@ -63,11 +63,18 @@ def init_object_world(args):
     # return : Object world, transition matrix, ground truth value map, ground truth policy, feature_map
     print('[INFO] Initialize Object World')
 
-    ow = Objectworld(args.grid_size, args.n_objects, args.n_colours, args.act_random)
-    rewards_gt = np.reshape(ow.reward_update(), args.grid_size*args.grid_size, order='F')
+    ow = Objectworld(args.height, args.n_objects, args.n_colours, args.act_random)
+    rewards_gt = np.reshape(ow.reward_update(), args.height*args.height, order='F')
     feature_map = ow.feature_matrix(discrete=False)
 
     print('[INFO] Getting ground truth values and policy via value iteration')
     values_gt, policy_gt = value_iteration(ow.P_a, rewards_gt, args.gamma, error=args.error, deterministic=True)
 
     return ow, ow.P_a, rewards_gt, values_gt, policy_gt, feature_map
+
+def visitation_frequency(trajs, n_states):
+    freq = np.zeros(n_states, dtype=np.int64)
+    for traj in trajs:
+        for step in traj:
+            freq[step.cur_state] += 1
+    return freq

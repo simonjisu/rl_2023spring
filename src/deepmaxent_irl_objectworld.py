@@ -1,9 +1,10 @@
 import numpy as np
 from collections import defaultdict
-from .GridWorldMDP.objectworld_utils import draw_path, generate_demonstrations, init_object_world
+from .GridWorldMDP.objectworld_utils import draw_path, generate_demonstrations, init_object_world, visitation_frequency
 from .deepmaxent_irl import deepmaxent_irl
 from .GridWorldMDP.policy_iteration import finite_policy_iteration, policy_evaluation
 from IPython.display import clear_output
+from .func_utils import min_max, tanh, sigmoid
 
 def run_deepmaxent_irl(args, init_start_pos=None):
     """_summary_
@@ -15,7 +16,6 @@ def run_deepmaxent_irl(args, init_start_pos=None):
     """    
     ow, P_a, rewards_gt, values_gt, policy_gt, feat_map = init_object_world(args)
     history = defaultdict(dict)
-
 
     # initial trajectories always start from random position
     print('[INFO] Initialize trajectories')
@@ -53,15 +53,22 @@ def run_deepmaxent_irl(args, init_start_pos=None):
     history[0]['args'] = args
     current_n_trajs = args.n_query
     history[current_n_trajs]['trajs'] = trajs
-    print(f'{current_n_trajs}th trajectories.')
-    print(draw_path(trajs[0], ow))
+    # print(f'{current_n_trajs}th trajectories.')
+    # print(draw_path(trajs[0], ow))
 
     while True:
         print(f'[INFO - n_trajs:{current_n_trajs}] Training Deep MaxEnt IRL')
         rewards, policy, l2_loss = deepmaxent_irl(feat_map, P_a, trajs, args)
-        
+        if args.type == 'grid':
+            normalize_fn = lambda x: min_max(x, is_tanh_like=False)
+        elif args.type == 'object':
+            normalize_fn = lambda x: min_max(x, is_tanh_like=True)
+        else:
+            raise NotImplementedError('Unknown environment type: {}'.format(args.type))
+        rewards = normalize_fn(rewards)
+
         print(f'--Reward Map (Recovered) when n_trajs:{current_n_trajs}--')
-        print(rewards.reshape(args.height, args.width, order='F').round(4))
+        print(rewards.reshape(args.height, args.height, order='F').round(4))
         history[current_n_trajs]['rewards'] = rewards   # rewards map after IRL
         history[current_n_trajs]['policy'] = policy   # policy after IRL
         history[current_n_trajs]['l2_loss'] = l2_loss   # l2 loss after IRL
@@ -69,6 +76,9 @@ def run_deepmaxent_irl(args, init_start_pos=None):
         print(f'[INFO - n_trajs:{current_n_trajs}] Policy evaluation')
         values = policy_evaluation(P_a, rewards_gt, policy, args.gamma, error=args.error)
         history[current_n_trajs]['values'] = values
+
+        evd = np.abs(values_gt - values).mean()
+        print(f'-- evd = {evd:.6f} ---')
 
         if current_n_trajs + args.n_query > args.n_trajs: # break signal
             break
@@ -81,7 +91,7 @@ def run_deepmaxent_irl(args, init_start_pos=None):
             query_idxs = np.argsort(values_new)[::-1][:args.n_query]
             start_points_new = [ow.idx2pos(idx) for idx in query_idxs]
             print(f'-- Acquisition Function Map when n_trajs:{current_n_trajs}--')
-            print(values_new.reshape(args.height, args.width, order='F').round(4))
+            print(values_new.reshape(args.height, args.height, order='F').round(4))
             print(f'[INFO - n_trajs:{current_n_trajs}] Generating a new demonstrations from {start_points_new}')
             trajs_new = []
             for sp in start_points_new:
@@ -104,8 +114,11 @@ def run_deepmaxent_irl(args, init_start_pos=None):
         trajs.extend(trajs_new)
         current_n_trajs += args.n_query
         history[current_n_trajs]['trajs'] = trajs_new
-        print(f'{current_n_trajs}th trajectories.')
-        print(draw_path(trajs_new[0], ow))
-        if args.verbose == 2:
-            clear_output(wait=False)
+        # print(f'{current_n_trajs}th trajectories.')
+        # print(draw_path(trajs_new[0], ow))
+        # if args.verbose == 2:
+        #     clear_output(wait=False)
+        freq = visitation_frequency(trajs, args.height*args.height)
+        print('Visitation Frequency')
+        print(freq.reshape(args.height, args.height, order='F'))
     return history

@@ -3,6 +3,7 @@ from collections import defaultdict
 from .GridWorldMDP.utils import draw_path, generate_demonstrations, init_grid_world
 from .GridWorldMDP.policy_iteration import finite_policy_iteration, policy_evaluation
 from .maxent_irl import maxent_irl
+from .func_utils import min_max, tanh, sigmoid
 
 def run_maxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], init_start_pos=None):
     gw, P_a, rewards_gt, values_gt, policy_gt = init_grid_world(args, coor_rates)
@@ -51,7 +52,14 @@ def run_maxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], init_s
     while True:
         print(f'[INFO - n_trajs:{current_n_trajs}] Training MaxEnt IRL')
         rewards, policy = maxent_irl(feat_map, P_a, trajs, args)
-        
+        if args.type == 'grid':
+            normalize_fn = lambda x: min_max(x, is_tanh_like=False)
+        elif args.type == 'object':
+            normalize_fn = lambda x: min_max(x, is_tanh_like=True)
+        else:
+            raise NotImplementedError('Unknown environment type: {}'.format(args.type))
+        rewards = normalize_fn(rewards)
+
         print(f'--Reward Map (Recovered) when n_trajs:{current_n_trajs}--')
         print(rewards.reshape(args.height, args.width, order='F').round(4))
         history[current_n_trajs]['rewards'] = rewards   # rewards map after IRL

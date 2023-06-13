@@ -4,6 +4,7 @@ from .GridWorldMDP.utils import draw_path, generate_demonstrations, init_grid_wo
 from .deepmaxent_irl import deepmaxent_irl
 from .GridWorldMDP.policy_iteration import finite_policy_iteration, policy_evaluation
 from IPython.display import clear_output
+from .func_utils import min_max, tanh, sigmoid
 
 def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], init_start_pos=None):
     """_summary_
@@ -60,7 +61,14 @@ def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], in
     while True:
         print(f'[INFO - n_trajs:{current_n_trajs}] Training Deep MaxEnt IRL')
         rewards, policy, l2_loss = deepmaxent_irl(feat_map, P_a, trajs, args)
-        
+        if args.type == 'grid':
+            normalize_fn = lambda x: min_max(x, is_tanh_like=False)
+        elif args.type == 'object':
+            normalize_fn = lambda x: min_max(x, is_tanh_like=True)
+        else:
+            raise NotImplementedError('Unknown environment type: {}'.format(args.type))
+        rewards = normalize_fn(rewards)
+
         print(f'--Reward Map (Recovered) when n_trajs:{current_n_trajs}--')
         print(rewards.reshape(args.height, args.width, order='F').round(4))
         history[current_n_trajs]['rewards'] = rewards   # rewards map after IRL
@@ -110,9 +118,10 @@ def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], in
         history[current_n_trajs]['trajs'] = trajs_new
         # print(f'{current_n_trajs}th trajectories.')
         # print(draw_path(trajs_new[0], gw))
+        # if args.verbose == 2:
+        #     clear_output(wait=False)
         freq = visitation_frequency(trajs, args.height*args.width)
         print('Visitation Frequency')
         print(freq.reshape(args.height, args.width, order='F'))
-        # if args.verbose == 2:
-        #     clear_output(wait=False)
+        
     return history
