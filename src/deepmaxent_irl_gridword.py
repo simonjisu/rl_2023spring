@@ -57,6 +57,9 @@ def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], in
     history[current_n_trajs]['trajs'] = trajs
     # print(f'{current_n_trajs}th trajectories.')
     # print(draw_path(trajs[0], gw))
+    freq = visitation_frequency(trajs, args.height*args.width)
+    print('Visitation Frequency')
+    print(freq.reshape(args.height, args.width, order='F'))
 
     while True:
         print(f'[INFO - n_trajs:{current_n_trajs}] Training Deep MaxEnt IRL')
@@ -67,10 +70,10 @@ def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], in
             normalize_fn = lambda x: min_max(x, is_tanh_like=True)
         else:
             raise NotImplementedError('Unknown environment type: {}'.format(args.type))
+        print(f'--Unnormed Reward Map (Recovered) when n_trajs:{current_n_trajs}--')
+        print(rewards.reshape(args.height, args.height, order='F').round(4))
         rewards = normalize_fn(rewards)
 
-        print(f'--Reward Map (Recovered) when n_trajs:{current_n_trajs}--')
-        print(rewards.reshape(args.height, args.width, order='F').round(4))
         history[current_n_trajs]['rewards'] = rewards   # rewards map after IRL
         history[current_n_trajs]['policy'] = policy   # policy after IRL
         history[current_n_trajs]['l2_loss'] = l2_loss   # l2 loss after IRL
