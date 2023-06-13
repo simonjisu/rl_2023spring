@@ -63,9 +63,9 @@ def init_object_world(args):
     # return : Object world, transition matrix, ground truth value map, ground truth policy, feature_map
     print('[INFO] Initialize Object World')
 
-    ow = Objectworld(args.grid_size, args.n_objects, args.n_colours, 1 - args.act_random)
+    ow = Objectworld(args.grid_size, args.n_objects, args.n_colours, args.act_random)
     rewards_gt = np.reshape(ow.reward_update(), args.grid_size*args.grid_size, order='F')
-    feature_map = ow.feature_matrix()
+    feature_map = ow.feature_matrix(discrete=False)
 
     print('[INFO] Getting ground truth values and policy via value iteration')
     values_gt, policy_gt = value_iteration(ow.P_a, rewards_gt, args.gamma, error=args.error, deterministic=True)

@@ -13,7 +13,7 @@ def run_deepmaxent_irl(args, init_start_pos=None):
         coor_rates (_type_): _description_
         init_start_pos (_type_, optional): _description_. Defaults to None.
     """    
-    ow, P_a, rewards_gt, values_gt, policy_gt, feat_map = init_object_world(args, coor_rates)
+    ow, P_a, rewards_gt, values_gt, policy_gt, feat_map = init_object_world(args)
     history = defaultdict(dict)
 
 
