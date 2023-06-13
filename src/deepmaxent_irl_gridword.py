@@ -107,6 +107,6 @@ def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], in
         history[current_n_trajs]['trajs'] = trajs_new
         print(f'{current_n_trajs}th trajectories.')
         print(draw_path(trajs_new[0], gw))
-        if args.verbose == 2:
-            clear_output(wait=False)
+        # if args.verbose == 2:
+        #     clear_output(wait=False)
     return history
