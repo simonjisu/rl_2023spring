@@ -16,8 +16,10 @@ class DeepIRLFC(nn.Module):
         self.layers = nn.Sequential(
             nn.Linear(self.input_dim, self.hiddens[0]),
             nn.ELU(),
+            nn.Dropout(0.1),
             nn.Linear(self.hiddens[0], self.hiddens[1]),
             nn.ELU(),
+            nn.Dropout(0.1),
             nn.Linear(self.hiddens[1], self.output_dim)  # reward
         )
 
@@ -115,7 +117,12 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
     N_STATES, _, N_ACTIONS = np.shape(P_a)
 
     model = DeepIRLFC(input_dim=feat_map.shape[1], hiddens=args.hiddens, ouptut_dim=1).to(device)
-    # optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    
+    optimizer = torch.optim.AdamW(
+        model.parameters(), 
+        lr=args.learning_rate, 
+        weight_decay=args.weight_decay
+    )
 
     mu_D = demo_svf(trajs, N_STATES)
     inputs = torch.from_numpy(feat_map.view()).float().to(device)
@@ -128,44 +135,56 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
     else:
         progressbar = range(args.n_iters)
 
+    model.train()
     for iteration in progressbar:
         # zero gradients
-        # optimizer.zero_grad()
+        optimizer.zero_grad()
 
         # compute reward
         rewards = model(inputs)
         rewards_numpy = rewards.view(-1).detach().cpu().numpy()
-
+        
         # approximate value iteration
         _, policy = value_iteration(P_a, rewards_numpy, 
                                     gamma=args.gamma, 
                                     alpha=args.alpha, 
                                     error=args.error, 
-                                    deterministic=True)
+                                    deterministic=False)
 
         # propagate policy: expected state visitation frequencies
-        mu_exp = compute_state_visition_freq(P_a, trajs, policy, deterministic=True)
+        mu_exp = compute_state_visition_freq(P_a, trajs, policy, deterministic=False)
 
         # compute gradient on rewards
         grad_r = mu_D - mu_exp
         grad_r = torch.from_numpy(grad_r).float().view(-1, 1).to(device)
-        # rewards.backward(-grad_r)
+        rewards.backward(-grad_r)
 
         # for records calculate l2 loss
-        # l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().detach().cpu().numpy()
+        l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().detach().cpu().numpy()
         # clip gradients
-        # torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip) 
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip) 
 
         # update parameters
-        # optimizer.step()
-        grad_theta, l2_loss = get_grad_theta(args, rewards, model, grad_r)
-        apply_gradient(model, grad_theta, args)
+        optimizer.step()
+        # grad_theta, l2_loss = get_grad_theta(args, rewards, model, grad_r)
+        # apply_gradient(model, grad_theta, args)
 
-        progressbar.set_description(f'l2 loss = {l2_loss:.4f}')
+        if args.verbose != 0:
+            progressbar.set_description(f'l2 loss = {l2_loss:.4f}')
         
         if (args.verbose == 0) and (iteration % (args.n_iters/20) == 0):
-            print(f'iteration: {iteration}/{args.n_iters} l2 loss = {l2_loss:.4f}', flush=True)
+            print(f'iteration: {iteration}/{args.n_iters} l2 loss = {l2_loss:.4f}')
+            print('rewards')
+            print(rewards_numpy.reshape(args.height, args.width, order='F'))
+            print(f'Grad r')
+            print(grad_r.view(-1).detach().cpu().numpy().round(6))
+            for ln, lp in model.named_parameters():
+                print(f'gradient of layer {ln}')
+                print(lp.grad[:10])
+            # print('Grad Theta')
+            # print(grad_theta[0].view(-1).detach().cpu().numpy().round(6)[:10])
     
+    model.eval()
     l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().detach().cpu().numpy()
     rewards = model(inputs)
     rewards_numpy = rewards.view(-1).detach().cpu().numpy()
@@ -175,5 +194,7 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
                                 alpha=args.alpha, 
                                 error=args.error, 
                                 deterministic=False)
+    print(f'unnormed rewards')
+    print(rewards_numpy.reshape(args.height, args.width, order='F'))
     
     return normalize(rewards_numpy), policy, l2_loss
