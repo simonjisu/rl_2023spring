@@ -63,6 +63,7 @@ def value_iteration(P_a, rewards, gamma, alpha=1.0, error=0.001, deterministic=T
                                   for s1 in range(N_STATES)]) 
                                   for a in range(N_ACTIONS)])
   else:
+    tries = 0
     q_values = np.zeros((N_STATES, N_ACTIONS))
     while True:
       values_tmp = values.copy()
@@ -72,10 +73,27 @@ def value_iteration(P_a, rewards, gamma, alpha=1.0, error=0.001, deterministic=T
           # to avoid log(0)
           # m = np.max((1/alpha)*q_values[s]) 
           # values[s] = alpha*np.log(np.average(np.exp(m)) + m)
-        values[s] = alpha*np.log(np.sum(np.exp((1/alpha)*q_values[s])) + 1e-10)  
+        x = (1/alpha)*q_values[s]
+        m = np.max(x)
+        values[s] = alpha * np.log(np.sum(np.exp(x-m))) + alpha * m
+        # values[s] = alpha * np.log(np.sum(np.exp((1/alpha) * q_values[s])))  
+      # print(f'[V] {tries}th iteration: {values[s]}')
+      # print(f'x:\n {x}\n m:\n{m}')
+      # for a in range(N_ACTIONS): 
+      #   print(f'[Q-{a}] {tries}th iteration: {q_values[s][a]}')
       
       if np.max(np.abs(values - values_tmp)) < error:
         break
+      # else:
+      #   tries += 1
+
+      # if tries > 100:
+      #   print('q_values')
+      #   print(q_values)
+      #   print('values')
+      #   print(values)
+      #   raise ValueError('Value iteration is not converging. Try to increase the error threshold.')
+      
     policy = np.exp((q_values - values.reshape(-1, 1))/alpha)
 
   return values, policy

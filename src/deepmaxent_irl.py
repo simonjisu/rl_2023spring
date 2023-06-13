@@ -125,7 +125,7 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
     )
 
     mu_D = demo_svf(trajs, N_STATES)
-    inputs = torch.from_numpy(feat_map.view()).float().to(device)
+    inputs = torch.from_numpy(feat_map).float().to(device)
 
     # training
     if args.verbose == 1:
@@ -176,11 +176,11 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
             print(f'iteration: {iteration}/{args.n_iters} l2 loss = {l2_loss:.4f}')
             print('rewards')
             print(rewards_numpy.reshape(args.height, args.width, order='F'))
-            print(f'Grad r')
-            print(grad_r.view(-1).detach().cpu().numpy().round(6))
-            for ln, lp in model.named_parameters():
-                print(f'gradient of layer {ln}')
-                print(lp.grad[:10])
+            # print(f'Grad r')
+            # print(grad_r.view(-1).detach().cpu().numpy().round(6))
+            # for ln, lp in model.named_parameters():
+            #     print(f'gradient of layer {ln}')
+            #     print(lp.grad[:10])
             # print('Grad Theta')
             # print(grad_theta[0].view(-1).detach().cpu().numpy().round(6)[:10])
     
