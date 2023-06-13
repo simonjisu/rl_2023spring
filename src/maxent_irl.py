@@ -28,14 +28,12 @@ def gradient_clip(grad, c):
             new_grad[i] = -c
     return new_grad
 
-
 def compute_state_visition_freq(P_a: np.ndarray, trajs, policy: np.ndarray, deterministic:bool=True):
     """compute the expected states visition frequency p(s| theta, T) 
     using dynamic programming
 
     inputs:
     P_a     NxNxN_ACTIONS matrix - transition dynamics
-    gamma   float - discount factor
     trajs   list of list of Steps - collected from expert
     policy  Nx1 vector (or NxN_ACTIONS if deterministic=False) - policy
 
@@ -44,23 +42,55 @@ def compute_state_visition_freq(P_a: np.ndarray, trajs, policy: np.ndarray, dete
     p       Nx1 vector - state visitation frequencies
     """
     N_STATES, _, N_ACTIONS = np.shape(P_a)
-
+    N = len(trajs)
     T = len(trajs[0])
     # mu[s, t] is the prob of visiting state s at time t
     mu = np.zeros([N_STATES, T]) 
 
     for traj in trajs:
         mu[traj[0].cur_state, 0] += 1
-    mu[:,0] = mu[:,0]/len(trajs)
-
-    for s in range(N_STATES):
-        for t in range(T-1):
+    mu /= N
+    # mu[:,0] = mu[:,0]/len(trajs)
+    for t in range(T-1):        
+        for s in range(N_STATES):
             if deterministic:
                 mu[s, t+1] = sum([mu[pre_s, t]*P_a[pre_s, s, int(policy[pre_s])] for pre_s in range(N_STATES)])
             else:
                 mu[s, t+1] = sum([sum([mu[pre_s, t]*P_a[pre_s, s, a1]*policy[pre_s, a1] for a1 in range(N_ACTIONS)]) for pre_s in range(N_STATES)])
-    p = np.sum(mu, 1)
+    p = np.sum(mu, 1)/T
     return p
+# def compute_state_visition_freq(P_a: np.ndarray, trajs, policy: np.ndarray, deterministic:bool=True):
+#     """compute the expected states visition frequency p(s| theta, T) 
+#     using dynamic programming
+
+#     inputs:
+#     P_a     NxNxN_ACTIONS matrix - transition dynamics
+#     gamma   float - discount factor
+#     trajs   list of list of Steps - collected from expert
+#     policy  Nx1 vector (or NxN_ACTIONS if deterministic=False) - policy
+
+
+#     returns:
+#     p       Nx1 vector - state visitation frequencies
+#     """
+#     N_STATES, _, N_ACTIONS = np.shape(P_a)
+
+#     T = len(trajs[0])
+#     # mu[s, t] is the prob of visiting state s at time t
+#     mu = np.zeros([N_STATES, T]) 
+
+#     for traj in trajs:
+#         mu[traj[0].cur_state, 0] += 1
+#     mu[:,0] = mu[:,0]/len(trajs)
+
+#     for s in range(N_STATES):
+#         for t in range(T-1):
+#             if deterministic:
+#                 mu[s, t+1] = sum([mu[pre_s, t]*P_a[pre_s, s, int(policy[pre_s])] for pre_s in range(N_STATES)])
+#             else:
+#                 mu[s, t+1] = sum([sum([mu[pre_s, t]*P_a[pre_s, s, a1]*policy[pre_s, a1] for a1 in range(N_ACTIONS)]) for pre_s in range(N_STATES)])
+#     p = np.sum(mu, 1)
+#     return p
 
 
 def maxent_irl(feat_map, P_a, trajs, args):#, gamma, lr, c, lam, n_iters, alpha=1.0, error=0.01):
