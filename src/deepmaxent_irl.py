@@ -41,22 +41,22 @@ def compute_state_visition_freq(P_a: np.ndarray, trajs, policy: np.ndarray, dete
     p       Nx1 vector - state visitation frequencies
     """
     N_STATES, _, N_ACTIONS = np.shape(P_a)
-
+    N = len(trajs)
     T = len(trajs[0])
     # mu[s, t] is the prob of visiting state s at time t
     mu = np.zeros([N_STATES, T]) 
 
     for traj in trajs:
         mu[traj[0].cur_state, 0] += 1
-    mu[:,0] = mu[:,0]/len(trajs)
-
-    for s in range(N_STATES):
-        for t in range(T-1):
+    mu /= N
+    # mu[:,0] = mu[:,0]/len(trajs)
+    for t in range(T-1):        
+        for s in range(N_STATES):
             if deterministic:
                 mu[s, t+1] = sum([mu[pre_s, t]*P_a[pre_s, s, int(policy[pre_s])] for pre_s in range(N_STATES)])
             else:
                 mu[s, t+1] = sum([sum([mu[pre_s, t]*P_a[pre_s, s, a1]*policy[pre_s, a1] for a1 in range(N_ACTIONS)]) for pre_s in range(N_STATES)])
-    p = np.sum(mu, 1)
+    p = np.sum(mu, 1)/T
     return p
 
 def demo_svf(trajs, n_states):
@@ -73,7 +73,7 @@ def demo_svf(trajs, n_states):
     for traj in trajs:
         for step in traj:
             p[step.cur_state] += 1
-    p = p/len(trajs)
+    p = p/np.sum(p)
     return p
 
 def get_grad_theta(args, rewards, model, grad_r):
@@ -170,12 +170,12 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
         # apply_gradient(model, grad_theta, args)
 
         if args.verbose != 0:
-            progressbar.set_description(f'l2 loss = {l2_loss:.4f}')
+            progressbar.set_description_str(f'l2 loss = {l2_loss:.4f}')
         
         if (args.verbose == 0) and (iteration % (args.n_iters/20) == 0):
             print(f'iteration: {iteration}/{args.n_iters} l2 loss = {l2_loss:.4f}')
-            print('rewards')
-            print(rewards_numpy.reshape(args.height, args.width, order='F'))
+            # print('rewards')
+            # print(rewards_numpy.reshape(args.height, args.width, order='F'))
             # print(f'Grad r')
             # print(grad_r.view(-1).detach().cpu().numpy().round(6))
             # for ln, lp in model.named_parameters():

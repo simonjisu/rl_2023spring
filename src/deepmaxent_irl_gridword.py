@@ -5,6 +5,7 @@ from .deepmaxent_irl import deepmaxent_irl
 from .GridWorldMDP.policy_iteration import finite_policy_iteration, policy_evaluation
 from IPython.display import clear_output
 from .func_utils import min_max, tanh, sigmoid
+import time
 
 def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], init_start_pos=None):
     """_summary_
@@ -126,5 +127,5 @@ def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], in
         freq = visitation_frequency(trajs, args.height*args.width)
         print('Visitation Frequency')
         print(freq.reshape(args.height, args.width, order='F'))
-        
+
     return history

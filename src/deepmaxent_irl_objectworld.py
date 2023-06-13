@@ -5,6 +5,7 @@ from .deepmaxent_irl import deepmaxent_irl
 from .GridWorldMDP.policy_iteration import finite_policy_iteration, policy_evaluation
 from IPython.display import clear_output
 from .func_utils import min_max, tanh, sigmoid
+import time
 
 def run_deepmaxent_irl(args, init_start_pos=None):
     """_summary_
@@ -119,9 +120,8 @@ def run_deepmaxent_irl(args, init_start_pos=None):
         history[current_n_trajs]['trajs'] = trajs_new
         # print(f'{current_n_trajs}th trajectories.')
         # print(draw_path(trajs_new[0], ow))
-        # if args.verbose == 2:
-        #     clear_output(wait=False)
         freq = visitation_frequency(trajs, args.height*args.height)
         print('Visitation Frequency')
         print(freq.reshape(args.height, args.height, order='F'))
+        
     return history

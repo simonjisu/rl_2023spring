@@ -2,15 +2,6 @@ import numpy as np
 import math
 
 
-
-def tanh(vals):
-  """
-  tanh function
-  inputs:
-    vals      1d array
-  """
-  return np.array([math.tanh(x) for x in vals])
-
 def min_max(vals, is_tanh_like=False):
   """
   normalize to (0, max_val)
@@ -32,3 +23,11 @@ def sigmoid(xs):
     xs      1d array
   """
   return np.array([1 / (1 + math.exp(-x)) for x in xs])
+
+def tanh(vals):
+  """
+  tanh function
+  inputs:
+    vals      1d array
+  """
+  return np.array([math.tanh(x) for x in vals])
