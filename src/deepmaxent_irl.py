@@ -129,9 +129,9 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
 
     # training
     if args.verbose == 1:
-        progressbar = tqdm_progressbar(range(args.n_iters), total=args.n_iters)
+        progressbar = tqdm_progressbar(range(args.n_iters), total=args.n_iters, leave=True)
     elif args.verbose == 2:
-        progressbar = tqdm_notebook_progressbar(range(args.n_iters), total=args.n_iters)
+        progressbar = tqdm_notebook_progressbar(range(args.n_iters), total=args.n_iters, leave=True)
     else:
         progressbar = range(args.n_iters)
 
@@ -160,7 +160,7 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
         rewards.backward(-grad_r)
 
         # for records calculate l2 loss
-        l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().detach().cpu().numpy()
+        l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().item()
         # clip gradients
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip) 
 
@@ -194,7 +194,7 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
                                 alpha=args.alpha, 
                                 error=args.error, 
                                 deterministic=False)
-    print(f'unnormed rewards')
-    print(rewards_numpy.reshape(args.height, args.width, order='F'))
+    # print(f'unnormed rewards')
+    # print(rewards_numpy.reshape(args.height, args.width, order='F'))
     
     return normalize(rewards_numpy), policy, l2_loss

@@ -1,6 +1,6 @@
 import numpy as np
 from collections import defaultdict
-from .GridWorldMDP.utils import draw_path, generate_demonstrations, init_grid_world
+from .GridWorldMDP.utils import draw_path, generate_demonstrations, init_grid_world, visitation_frequency
 from .deepmaxent_irl import deepmaxent_irl
 from .GridWorldMDP.policy_iteration import finite_policy_iteration, policy_evaluation
 from IPython.display import clear_output
@@ -54,8 +54,8 @@ def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], in
     history[0]['args'] = args
     current_n_trajs = args.n_query
     history[current_n_trajs]['trajs'] = trajs
-    print(f'{current_n_trajs}th trajectories.')
-    print(draw_path(trajs[0], gw))
+    # print(f'{current_n_trajs}th trajectories.')
+    # print(draw_path(trajs[0], gw))
 
     while True:
         print(f'[INFO - n_trajs:{current_n_trajs}] Training Deep MaxEnt IRL')
@@ -70,6 +70,9 @@ def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], in
         print(f'[INFO - n_trajs:{current_n_trajs}] Policy evaluation')
         values = policy_evaluation(P_a, rewards_gt, policy, args.gamma, error=args.error)
         history[current_n_trajs]['values'] = values
+
+        evd = np.abs(values_gt - values).mean()
+        print(f'-- evd = {evd:.6f} ---')
 
         if current_n_trajs + args.n_query > args.n_trajs: # break signal
             break
@@ -105,8 +108,11 @@ def run_deepmaxent_irl(args, coor_rates: list[tuple[tuple[int, int], float]], in
         trajs.extend(trajs_new)
         current_n_trajs += args.n_query
         history[current_n_trajs]['trajs'] = trajs_new
-        print(f'{current_n_trajs}th trajectories.')
-        print(draw_path(trajs_new[0], gw))
+        # print(f'{current_n_trajs}th trajectories.')
+        # print(draw_path(trajs_new[0], gw))
+        freq = visitation_frequency(trajs, args.height*args.width)
+        print('Visitation Frequency')
+        print(freq.reshape(args.height, args.width, order='F'))
         # if args.verbose == 2:
         #     clear_output(wait=False)
     return history

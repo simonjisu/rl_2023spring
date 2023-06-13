@@ -75,3 +75,10 @@ def init_grid_world(args, coor_rates: list[tuple[tuple[int, int], float]]):
     values_gt, policy_gt = value_iteration(P_a, rewards_gt, args.gamma, error=args.error, deterministic=True)
 
     return gw, P_a, rewards_gt, values_gt, policy_gt
+
+def visitation_frequency(trajs, n_states):
+    freq = np.zeros(n_states, dtype=np.int64)
+    for traj in trajs:
+        for step in traj:
+            freq[step.cur_state] += 1
+    return freq
