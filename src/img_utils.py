@@ -19,9 +19,11 @@ def get_evd(history):
 
 class Visualizer:
     
-    def __init__(self, history, file_path = None):
+    def __init__(self, history, file_path = None, figsize=(20, 4), dpi=110):
         self.history = history
         self.file_path = file_path
+        self.figsize = figsize
+        self.dpi = dpi
         self.args = history[0]['args']
         self.active = self.args.active
         self.max_val, self.min_val = math.ceil(np.max(history[0]['values_gt'])), math.floor(np.min(history[0]['values_gt']))
@@ -51,7 +53,7 @@ class Visualizer:
     
     def draw_value_maps(self, search_idx):
         info_dict = self.get_infos(search_idx)
-        fig, axes = plt.subplots(1, 4, figsize=(20, 4), dpi=110)
+        fig, axes = plt.subplots(1, 4, figsize=self.figsize, dpi=self.dpi)
         titles = {
             'rewards_gt': 'Rewards Map (Ground Truth)',
             'values_gt': 'Value Map (Ground Truth)',
@@ -77,7 +79,7 @@ class Visualizer:
 
     def draw_acq_maps(self, search_idx):
         info_dict = self.get_infos(search_idx)
-        fig, axes = plt.subplots(1, 4, figsize=(20, 4), dpi=110)
+        fig, axes = plt.subplots(1, 4, figsize=self.figsize, dpi=self.dpi)
         titles = {
             'rewards_gt': 'Rewards Map (Ground Truth)',
             'rewards': 'Rewards Map (Recovered)',
@@ -102,7 +104,7 @@ class Visualizer:
 
     def draw_policy_maps(self, search_idx):
         info_dict = self.get_infos(search_idx)
-        fig, axes = plt.subplots(1, 4, figsize=(20, 4), dpi=110)
+        fig, axes = plt.subplots(1, 4, figsize=self.figsize, dpi=self.dpi)
         titles = {
             'values_gt': 'Value Map (Ground Truth)',
             'policy_gt': 'Policy Map (Ground Truth)',
