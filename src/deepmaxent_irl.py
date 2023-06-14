@@ -19,7 +19,7 @@ class DeepIRLFC(nn.Module):
             nn.Linear(self.hiddens[0], self.hiddens[1]),
             nn.ELU(),
             nn.Dropout(0.1),
-            nn.Linear(self.hiddens[1], self.output_dim)  # reward
+            nn.Linear(self.hiddens[1], self.output_dim),  # reward
         )
 
     def forward(self, x):
@@ -129,7 +129,7 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
 
     # training
     if args.verbose == 1:
-        progressbar = tqdm_progressbar(range(args.n_iters), total=args.n_iters, leave=True)
+        progressbar = tqdm_progressbar(range(args.n_iters), total=args.n_iters, leave=False)
     elif args.verbose == 2:
         progressbar = tqdm_notebook_progressbar(range(args.n_iters), total=args.n_iters, leave=True)
     else:
@@ -197,4 +197,4 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
     # print(f'unnormed rewards')
     # print(rewards_numpy.reshape(args.height, args.width, order='F'))
     # return rewards_numpy, policy, l2_loss
-    return rewards_numpy, policy, l2_loss
+    return rewards_numpy, policy, l2_loss, model
