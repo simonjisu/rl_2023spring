@@ -49,8 +49,6 @@ def BALD_acquisition_function(model, P_a, gw, n_sample, feat_map, args):
         rewards_new_R[i] = (-policy_new * np.log(policy_new)).sum(1)
         policy_D[i] = policy_new
     policy_D = policy_D.mean(axis = 0)
-    print(policy_D[0])
-    print(policy_D.sum(1))
     rewards_new_D = (-policy_D * np.log(policy_D)).sum(1)
     rewards_new = rewards_new_D - rewards_new_R.mean(axis = 0)
     values_new = finite_policy_evaluation(P_a, policy_D, np.resize(rewards_new, (args.l_traj, len(rewards_new))), args.gamma)
