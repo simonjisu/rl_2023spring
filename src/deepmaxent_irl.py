@@ -15,11 +15,12 @@ class DeepIRLFC(nn.Module):
         self.layers = nn.Sequential(
             nn.Linear(self.input_dim, self.hiddens[0]),
             nn.ELU(),
-            nn.Dropout(0.1),
+            # nn.Dropout(0.25),
             nn.Linear(self.hiddens[0], self.hiddens[1]),
             nn.ELU(),
-            nn.Dropout(0.1),
+            nn.Dropout(0.5),
             nn.Linear(self.hiddens[1], self.output_dim),  # reward
+            nn.Tanh()
         )
 
     def forward(self, x):

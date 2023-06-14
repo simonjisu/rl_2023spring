@@ -2,7 +2,7 @@ import numpy as np
 from collections import defaultdict
 from .GridWorldMDP.objectworld_utils import generate_demonstrations, init_object_world, visitation_frequency
 from .deepmaxent_irl import deepmaxent_irl
-from .GridWorldMDP.policy_iteration import uncertainty_acquisition_function, policy_evaluation
+from .GridWorldMDP.policy_iteration import uncertainty_acquisition_function, policy_evaluation, BALD_acquisition_function
 from .func_utils import min_max
 
 def run_deepmaxent_irl(args, init_start_pos=None):
@@ -92,11 +92,13 @@ def run_deepmaxent_irl(args, init_start_pos=None):
         if current_n_trajs + args.n_query > args.n_trajs: # break signal
             break
 
-        if args.active:
+        if args.active or args.new_active:
             print(f'[INFO - n_trajs:{current_n_trajs}] Calculating the acqusition map')
-
             # ----- calculate acquisition map -----
-            rewards_new_T, values_new, policy_new = uncertainty_acquisition_function(P_a, policy, env, args.gamma, args.l_traj)
+            if args.active:
+                rewards_new_T, values_new, policy_new = uncertainty_acquisition_function(P_a, policy, env, args.gamma, args.l_traj)
+            if args.new_active:
+                rewards_new_T, values_new, policy_new = BALD_acquisition_function(model, P_a, env, 50, feat_map, args)
             # acquistion process
             # if n_query > 1 then we need to select the n_query points
             query_idxs = np.argsort(values_new)[::-1][:args.n_query]

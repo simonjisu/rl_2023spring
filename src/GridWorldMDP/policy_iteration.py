@@ -40,15 +40,21 @@ def BALD_acquisition_function(model, P_a, gw, n_sample, feat_map, args):
     inputs = torch.from_numpy(feat_map).float().to(device)
     N_STATES, _, N_ACTIONS = np.shape(P_a)
     policy_D = np.zeros((n_sample, N_STATES, N_ACTIONS))
+    rewards_new_R = np.zeros((n_sample, N_STATES))
     for i in range(n_sample):
         rewards = model(inputs)
         rewards_numpy = rewards.view(-1).detach().cpu().numpy()
         _, policy_R = value_iteration(P_a, rewards_numpy, args.gamma, args.alpha, args.error, deterministic=False)
         policy_new = get_new_policy(gw, P_a, policy_R)
-        rewards_new = (policy_new * -np.log(policy_new)).sum(1)
+        rewards_new_R[i] = (-policy_new * np.log(policy_new)).sum(1)
         policy_D[i] = policy_new
     policy_D = policy_D.mean(axis = 0)
-    values_new = finite_policy_evaluation(P_a, policy_new, np.resize(rewards_new, (args.l_traj, len(rewards_new))), args.gamma)
+    print(policy_D[0])
+    print(policy_D.sum(1))
+    rewards_new_D = (-policy_D * np.log(policy_D)).sum(1)
+    rewards_new = rewards_new_D - rewards_new_R.mean(axis = 0)
+    values_new = finite_policy_evaluation(P_a, policy_D, np.resize(rewards_new, (args.l_traj, len(rewards_new))), args.gamma)
+    return rewards_new, values_new, policy_D
 
 
 
@@ -81,7 +87,7 @@ def uncertainty_acquisition_function(
     # run value iteration
     # set thre reward to be the negative log of the policy  
     policy_new = get_new_policy(gw, P_a, policy)         
-    rewards_new = (policy_new * -np.log(policy_new)).sum(1)
+    rewards_new = (-policy_new * np.log(policy_new)).sum(1)
     values_new = finite_policy_evaluation(P_a, policy_new, np.resize(rewards_new, (l_traj, len(rewards_new))), gamma)
     return rewards_new, values_new, policy_new
 

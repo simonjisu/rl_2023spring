@@ -44,7 +44,7 @@ def run_maxent_irl(args, init_start_pos=None):
     history[0]['policy_gt'] = policy_gt
     history[0]['args'] = args
     current_n_trajs = args.n_query
-    history[current_n_trajs]['trajs'] = trajs
+    history[current_n_trajs]['trajs'] = trajs.copy()
 
     freq = visitation_frequency(trajs, args.height*args.height)
     print('Visitation Frequency')

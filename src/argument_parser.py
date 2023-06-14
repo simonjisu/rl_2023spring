@@ -17,6 +17,7 @@ def get_parser():
     PARSER.add_argument('-lr', '--learning_rate', default=0.01, type=float, help='learning rate')
     PARSER.add_argument('-ni', '--n_iters', default=20, type=int, help='number of iterations')
     PARSER.add_argument('-act', '--active', action='store_true', help='active learning setting')  # store true
+    PARSER.add_argument('-newact', '--new_active', action='store_true', help='new active learning setting')  # store true
     PARSER.add_argument('-al', '--alpha', default=1.0, type=float, help='temperature parameter for value iteration')
     PARSER.add_argument('-nq', '--n_query', default=1, type=int, help='number of queries to the expert(n_demonstrations)')
     PARSER.add_argument('-rm', '--r_max', default=1, type=int, help='maximum reward value')
