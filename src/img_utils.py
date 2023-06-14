@@ -32,6 +32,7 @@ class Visualizer:
     
     def get_infos(self, search_idx):
         info_dict = {
+            'env': self.history[0]['gw'],
             'rewards_gt': self.history[0]['rewards_gt'],
             'values_gt': self.history[0]['values_gt'],
             'policy_gt': self.history[0]['policy_gt'],
@@ -137,7 +138,46 @@ class Visualizer:
             fig.savefig((Path(self.file_path) / f'policy_maps.png'))
         plt.show()
         return None
+    
+    def objectworld_reward_policy(self, search_idx = -1):
+        info_dict = self.get_infos(search_idx)
+        fig, axes = plt.subplots(1, 1, figsize=(5, 4), dpi=110)
+        
+        # reward
+        sns.heatmap(self.reshaper(info_dict['rewards_gt']), vmin = self.min_r, vmax = self.max_r, annot=False, fmt='.2f', ax=axes)
 
+        # policy
+        scale = 0.0001
+        arrows = {0:(1,0), 1:(-1,0), 3:(0,1),2:(0,-1), 4:(0,0)}
+        if search_idx == -1 :
+            # ground-truth policy
+            policy_key = 'policy_gt'
+            argmax_policy = info_dict[policy_key]
+            max_policy = np.ones(np.shape(argmax_policy))
+        else:
+            policy_key = 'policy'
+            argmax_policy = np.argmax(info_dict[policy_key], axis=1)
+            max_policy = np.max(info_dict[policy_key], axis=1)
+        for i in range(self.args.height):
+            for j in range(self.args.width):
+                axes.arrow(j+0.5, i+0.5, scale*arrows[self.reshaper(argmax_policy)[i, j]][0], scale*arrows[self.reshaper(argmax_policy)[i, j]][1], head_width=0.2, head_length = 0.2, edgecolor = 'black', fc = 'w')
+
+        # object
+        colors = [plt.cm.Set1(i) for i in range(self.args.n_colours)]
+        ow = info_dict['env']
+        for (x,y), obj in ow.objects.items():
+            axes.add_patch(plt.Circle((x+0.5, y+0.5), 0.1, facecolor= colors[obj.inner_colour], alpha=1, linewidth=3, edgecolor=colors[obj.outer_colour]))
+
+        
+        suptitle = 'Active Sampling' if self.active else 'Random Sampling'
+        suptitle += f' (N_trajs={search_idx})'
+        # fig.suptitle(suptitle, fontsize=16)
+        # plt.tight_layout()
+        # if self.file_path is not None:
+        #     fig.savefig((Path(self.file_path) / f'policy_maps.png'))
+        plt.show()
+        return None
+    
 def draw_evd(evd_act, evd_rand,file_path=None):
     '''evd_act.shape = evd_rand.shape = (# of experiments, n_trajs)'''
     title = 'Expected value difference'
@@ -217,4 +257,5 @@ def draw_acq_maps_w_trajs(args, info_dict, traj, num_trajs=None, file_path=None)
     if file_path is not None:
         fig.savefig((Path(file_path) / f'algorithm.png'))
     plt.show()
+    
     
