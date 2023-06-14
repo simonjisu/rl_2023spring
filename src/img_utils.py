@@ -43,9 +43,9 @@ class Visualizer:
             'values': self.history[search_idx]['values'],
         }
         if self.active:
-            info_dict['rewards_new_T'] = self.history[search_idx]['rewards_new_T']
-            info_dict['values_new'] = self.history[search_idx]['values_new']
-            info_dict['policy_new'] = self.history[search_idx]['policy_new']
+            info_dict['rewards_new_T'] = self.history[search_idx-1]['rewards_new_T']
+            info_dict['values_new'] = self.history[search_idx-1]['values_new']
+            info_dict['policy_new'] = self.history[search_idx-1]['policy_new']
 
         return info_dict
     
