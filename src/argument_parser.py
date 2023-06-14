@@ -26,7 +26,7 @@ def get_parser():
     PARSER.add_argument('-wd', '--weight_decay', default=0.5, type=float, help='L2 Regularizing Constant')
     PARSER.add_argument('-d', '--device', default='cpu', type=str, help='device to use for tensor operations; cpu or cuda')
     PARSER.add_argument('-hs', '--hiddens', nargs='+', default=[32, 32], type=int, help='hidden layer sizes for the network')
-    PARSER.add_argument('-seed', '--seed', default='none', type=str, help='Seed: none or int number')
+    PARSER.add_argument('-seed', '--seed', default='none', type=str, help='Seed: `none` or `split` or `int` number')
     PARSER.add_argument('-verb', '--verbose', default=2, type=int, help='0: print, 1: tqdm, 2: tqdm_notebook')
 
     return PARSER
