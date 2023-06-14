@@ -32,7 +32,7 @@ class Visualizer:
     
     def get_infos(self, search_idx):
         info_dict = {
-            'env': self.history[0]['gw'],
+            'env': self.history[0]['env'],
             'rewards_gt': self.history[0]['rewards_gt'],
             'values_gt': self.history[0]['values_gt'],
             'policy_gt': self.history[0]['policy_gt'],
