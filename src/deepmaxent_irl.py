@@ -91,7 +91,7 @@ def apply_gradient(model, grad_theta, args):
     for p, g in zip(model.parameters(), grad_theta):
         p.data -= args.learning_rate * g
 
-def deepmaxent_irl(feat_map, P_a, trajs, args):    
+def deepmaxent_irl(feat_map, P_a, trajs, args, model=None, is_train=True):    
     """
     Deep Maximum Entropy Inverse Reinforcement Learning (Deep Maxent IRL)
 
@@ -115,79 +115,82 @@ def deepmaxent_irl(feat_map, P_a, trajs, args):
     """
     device = torch.device(args.device)
     N_STATES, _, N_ACTIONS = np.shape(P_a)
-    
-
-    model = DeepIRLFC(input_dim=feat_map.shape[1], hiddens=args.hiddens, ouptut_dim=1).to(device)
-    
-    optimizer = torch.optim.AdamW(
-        model.parameters(), 
-        lr=args.learning_rate, 
-        weight_decay=args.weight_decay
-    )
-
     mu_D = demo_svf(trajs, N_STATES)
     inputs = torch.from_numpy(feat_map).float().to(device)
 
-    # training
-    if args.verbose == 1:
-        progressbar = tqdm_progressbar(range(args.n_iters), total=args.n_iters, leave=False)
-    elif args.verbose == 2:
-        progressbar = tqdm_notebook_progressbar(range(args.n_iters), total=args.n_iters, leave=True)
+    if model is None:
+        model = DeepIRLFC(input_dim=feat_map.shape[1], hiddens=args.hiddens, ouptut_dim=1).to(device)
     else:
-        progressbar = range(args.n_iters)
+        model = model.to(device)
 
-    model.train()
-    for iteration in progressbar:
-        # zero gradients
-        optimizer.zero_grad()
+    if is_train:
+        optimizer = torch.optim.AdamW(
+            model.parameters(), 
+            lr=args.learning_rate, 
+            weight_decay=args.weight_decay
+        )
 
-        # compute reward
-        rewards = model(inputs)
-        rewards_numpy = rewards.view(-1).detach().cpu().numpy()
-        
-        # approximate value iteration
-        _, policy = value_iteration(P_a, rewards_numpy, 
-                                    gamma=args.gamma, 
-                                    alpha=args.alpha, 
-                                    error=args.error, 
-                                    deterministic=False)
+        # training
+        if args.verbose == 1:
+            progressbar = tqdm_progressbar(range(args.n_iters), total=args.n_iters, leave=False)
+        elif args.verbose == 2:
+            progressbar = tqdm_notebook_progressbar(range(args.n_iters), total=args.n_iters, leave=True)
+        else:
+            progressbar = range(args.n_iters)
 
-        # propagate policy: expected state visitation frequencies
-        mu_exp = compute_state_visition_freq(P_a, trajs, policy, deterministic=False)
+        model.train()
+        for iteration in progressbar:
+            # zero gradients
+            optimizer.zero_grad()
 
-        # compute gradient on rewards
-        grad_r = mu_D - mu_exp
-        grad_r = torch.from_numpy(grad_r).float().view(-1, 1).to(device)
-        rewards.backward(-grad_r)
+            # compute reward
+            rewards = model(inputs)
+            rewards_numpy = rewards.view(-1).detach().cpu().numpy()
+            
+            # approximate value iteration
+            _, policy = value_iteration(P_a, rewards_numpy, 
+                                        gamma=args.gamma, 
+                                        alpha=args.alpha, 
+                                        error=args.error, 
+                                        deterministic=False)
 
-        # for records calculate l2 loss
-        l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().item()
-        # clip gradients
-        torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip) 
+            # propagate policy: expected state visitation frequencies
+            mu_exp = compute_state_visition_freq(P_a, trajs, policy, deterministic=False)
 
-        # update parameters
-        optimizer.step()
-        # grad_theta, l2_loss = get_grad_theta(args, rewards, model, grad_r)
-        # apply_gradient(model, grad_theta, args)
+            # compute gradient on rewards
+            grad_r = mu_D - mu_exp
+            grad_r = torch.from_numpy(grad_r).float().view(-1, 1).to(device)
+            rewards.backward(-grad_r)
 
-        if args.verbose != 0:
-            progressbar.set_description_str(f'l2 loss = {l2_loss:.4f}')
-        
-        if (args.verbose == 0) and (iteration % (args.n_iters/20) == 0):
-            print(f'iteration: {iteration}/{args.n_iters} l2 loss = {l2_loss:.4f}')
-            # print('rewards')
-            # print(rewards_numpy.reshape(args.height, args.width, order='F'))
-            # print(f'Grad r')
-            # print(grad_r.view(-1).detach().cpu().numpy().round(6))
-            # for ln, lp in model.named_parameters():
-            #     print(f'gradient of layer {ln}')
-            #     print(lp.grad[:10])
-            # print('Grad Theta')
-            # print(grad_theta[0].view(-1).detach().cpu().numpy().round(6)[:10])
+            # for records calculate l2 loss
+            l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().item()
+            # clip gradients
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip) 
+
+            # update parameters
+            optimizer.step()
+            # grad_theta, l2_loss = get_grad_theta(args, rewards, model, grad_r)
+            # apply_gradient(model, grad_theta, args)
+
+            if args.verbose != 0:
+                progressbar.set_description_str(f'l2 loss = {l2_loss:.4f}')
+            
+            if (args.verbose == 0) and (iteration % (args.n_iters/20) == 0):
+                print(f'iteration: {iteration}/{args.n_iters} l2 loss = {l2_loss:.4f}')
+                # print('rewards')
+                # print(rewards_numpy.reshape(args.height, args.width, order='F'))
+                # print(f'Grad r')
+                # print(grad_r.view(-1).detach().cpu().numpy().round(6))
+                # for ln, lp in model.named_parameters():
+                #     print(f'gradient of layer {ln}')
+                #     print(lp.grad[:10])
+                # print('Grad Theta')
+                # print(grad_theta[0].view(-1).detach().cpu().numpy().round(6)[:10])
     
     model.eval()
     l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().detach().cpu().numpy()
-    rewards = model(inputs)
+    with torch.no_grad():
+        rewards = model(inputs)
     rewards_numpy = rewards.view(-1).detach().cpu().numpy()
 
     _, policy = value_iteration(P_a, rewards_numpy, 

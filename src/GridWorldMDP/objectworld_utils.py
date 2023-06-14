@@ -61,7 +61,8 @@ def init_object_world(args):
     # init the objectworld
     # args should contain : grid_size, n_objects, n_colours, act_random
     # return : Object world, transition matrix, ground truth value map, ground truth policy, feature_map
-    print('[INFO] Initialize Object World')
+    if args.verbose != 1:
+        print('[INFO] Initialize Object World')
     if args.seed != 'none':
         try:
             seed = int(args.seed)
@@ -72,8 +73,8 @@ def init_object_world(args):
     ow = Objectworld(args.height, args.n_objects, args.n_colours, args.act_random)
     rewards_gt = np.reshape(ow.reward_update(), args.height*args.height, order='F')
     feature_map = ow.feature_matrix(discrete=False)
-
-    print('[INFO] Getting ground truth values and policy via value iteration')
+    if args.verbose != 1:
+        print('[INFO] Getting ground truth values and policy via value iteration')
     values_gt, policy_gt = value_iteration(ow.P_a, rewards_gt, args.gamma, error=args.error, deterministic=True)
 
     return ow, ow.P_a, rewards_gt, values_gt, policy_gt, feature_map
