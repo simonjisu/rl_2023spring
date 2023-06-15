@@ -7,7 +7,7 @@ from .func_utils import min_max
 import torch
 from .GridWorldMDP.value_iteration import value_iteration
 
-def run_deepmaxent_irl(args, init_start_pos=None, init_model=None, is_train=True):
+def run_deepmaxent_irl(args, init_start_pos=None, init_model=None):
     """_summary_
 
     Args:
@@ -68,7 +68,7 @@ def run_deepmaxent_irl(args, init_start_pos=None, init_model=None, is_train=True
             print(f'[INFO - n_trajs:{current_n_trajs}] Training Deep MaxEnt IRL')
         # ----- run deep maxent irl -----
         rewards, policy, l2_loss, model = deepmaxent_irl(feat_map, P_a, trajs, args, 
-                                                         model=init_model, is_train=is_train)
+                                                         model=init_model)
         if args.type == 'grid':
             normalize_fn = lambda x: min_max(x, is_tanh_like=False)
         elif args.type == 'object':
@@ -117,7 +117,8 @@ def run_deepmaxent_irl(args, init_start_pos=None, init_model=None, is_train=True
 
         if current_n_trajs + args.n_query > args.n_trajs: # break signal
             break
-
+        
+        
         if args.active or args.new_active:
             if args.verbose != 1:
                 print(f'[INFO - n_trajs:{current_n_trajs}] Calculating the acqusition map')

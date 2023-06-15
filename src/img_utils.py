@@ -31,7 +31,15 @@ class Visualizer:
         self.figsize = figsize
         self.dpi = dpi
         self.args = history[0]['args']
-        self.active = self.args.active
+        if self.args.active:
+            self.active_type = 'Uncertainty Sampling'
+            self.active = True
+        elif self.args.new_active:
+            self.active_type = 'BALD Sampling'
+            self.active = True
+        else:
+            self.active_type = 'Random Sampling'
+            self.active = False
         self.max_val, self.min_val = math.ceil(np.max(history[0]['values_gt'])), math.floor(np.min(history[0]['values_gt']))
         self.max_r, self.min_r = math.ceil(np.max(history[0]['rewards_gt'])), math.floor(np.min(history[0]['rewards_gt']))
     
@@ -64,7 +72,8 @@ class Visualizer:
 
         return info_dict
     
-    def draw_value_maps(self, search_idx):
+    def draw_value_maps(self, search_idx, clip=False, clip_val=0.5):
+        assert clip_val >= 0.0 and clip_val <= 1.0, 'clip_val must be in [0, 1]'
         info_dict = self.get_infos(search_idx)
         fig, axes = plt.subplots(1, 4, figsize=self.figsize, dpi=self.dpi)
         titles = {
@@ -79,14 +88,20 @@ class Visualizer:
                 vmax, vmin = self.max_val, self.min_val
             else:
                 vmax, vmin = self.max_r, self.min_r
-            sns.heatmap(self.reshaper(info_dict[key]), vmax = vmax, vmin = vmin, annot=True, fmt='.2f', ax=ax)
+
+            x = self.reshaper(info_dict[key]).copy()
+            if clip and (key == 'rewards'):
+                x[(x >= clip_val)] = 1.0
+                x[(x > -(1-clip_val)) & (x < (1-clip_val))] = 0.0
+                x[(x <= -clip_val)] = -1.0
+            sns.heatmap(x, vmax = vmax, vmin = vmin, annot=True, fmt='.2f', ax=ax)
             
-        suptitle = 'Active Sampling' if self.active else 'Random Sampling'
+        suptitle = self.active_type
         suptitle += f' (N_trajs={search_idx})'
         fig.suptitle(suptitle, fontsize=16)
         plt.tight_layout()
         if self.file_path is not None:
-            fig.savefig((Path(self.file_path) / f'value_maps_{"active" if self.active else "random"}.png'))
+            fig.savefig((Path(self.file_path) / f'value_maps_{self.active_type}.png'))
         plt.show()
         return None
 
@@ -145,7 +160,7 @@ class Visualizer:
             else:
                 sns.heatmap(self.reshaper(info_dict[key]), vmin = self.min_val, vmax = self.max_val,
                             annot=True, fmt='.2f', ax=ax)
-        suptitle = 'Active Sampling' if self.active else 'Random Sampling'
+        suptitle = self.active_type
         suptitle += f' (N_trajs={search_idx})'
         fig.suptitle(suptitle, fontsize=16)
         plt.tight_layout()

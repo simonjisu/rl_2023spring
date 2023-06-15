@@ -28,28 +28,78 @@ class DeepIRLFC(nn.Module):
         x = self.layers(x)
         return x
 
+def build_block(input_dim, output_dim, kernel_size=3, stride=1, padding=1, dropout=0.25):
+    return [
+        nn.Conv2d(input_dim, output_dim, kernel_size=kernel_size, stride=stride, padding=padding),
+        nn.ELU(),
+        nn.Dropout(dropout)
+    ]
+
 class DeepIRLCNN(nn.Module):
     def __init__(self, input_dim, hiddens: list[int], output_dim: int=1):
         super(DeepIRLCNN, self).__init__()
         self.input_dim = input_dim
         self.hiddens = hiddens
         self.output_dim = output_dim
-        self.layers = nn.Sequential(
-            nn.Conv2d(input_dim, hiddens[0], kernel_size=3, stride=1, padding=1),
-            nn.ELU(),
-            nn.Dropout(0.25),
-            nn.Conv2d(hiddens[0], hiddens[1], kernel_size=3, stride=1, padding=1),
-            nn.ELU(),
-            nn.Dropout(0.25),
-            nn.Conv2d(hiddens[1], output_dim, kernel_size=1, stride=1, padding=0),
-            nn.Tanh()
-        )
+        self.layers = nn.ModuleList()
+        
+        # init block always build additional blocks as the same dim with hiddens[0]
+        self.layers.append(nn.Sequential(*build_block(input_dim, hiddens[0])))
+        self.checkers = []  # check if it is bottleneck layer
 
+        in_c = hiddens[0]
+        for i, out_c in enumerate(hiddens):
+            if out_c != in_c:
+                self.layers.append(nn.Conv2d(in_c, out_c, kernel_size=1, stride=1, padding=0))
+                self.checkers.append(True)
+                in_c = out_c
+            self.layers.append(nn.Sequential(*build_block(in_c, out_c)))
+            self.checkers.append(False)
+            in_c = out_c
+            
+            # self.layers.append(
+            #     nn.Sequential(
+            #         nn.Conv2d(input_dim, out_c, kernel_size=3, stride=1, padding=1),
+            #         nn.ELU(),
+            #         nn.Dropout(0.25)
+            #     )
+            #     if out_c != hiddens[-1]
+            # )
+            # input_dim = out_c
+        self.layers.append(
+            nn.Sequential(
+                nn.Conv2d(hiddens[-1], output_dim, kernel_size=3, stride=1, padding=1),
+                nn.Tanh()
+            )
+        )
+        
     def forward(self, x):
         """Get reward"""
         grid_size = int(np.sqrt(x.size(0)))
+        # x: SxD -> 1x
         x = x.view(grid_size, grid_size, self.input_dim).permute(2, 1, 0)[None,]
-        x = self.layers(x).squeeze()
+        x = self.layers[0]  # (1, C, H, W)
+        for layer, checker in zip(self.layers[1:-1], self.checkers):
+            rx = x
+            x = layer(x)
+            # if checker:
+
+        
+        # for i, layer in enumerate(self.layers[:-1]):
+        #     print(i)
+        #     # resnet style
+        #     if i == 0:
+        #         x = layer(x)
+        #     else:
+        #         rx = x
+        #         x = layer(x)
+        #         if rx.size(1) == x.size(1):
+        #             x = x + rx
+        #         else:
+        #             x
+                
+        x = self.layers[-1](x).squeeze()
+        # x = self.layers(x).squeeze()
         return x.permute(1, 0).reshape(-1, 1)
 
 def compute_state_visition_freq(P_a: np.ndarray, trajs, policy: np.ndarray, deterministic:bool=True):
@@ -115,7 +165,7 @@ def apply_gradient(model, grad_theta, args):
     for p, g in zip(model.parameters(), grad_theta):
         p.data -= args.learning_rate * g
 
-def deepmaxent_irl(feat_map, P_a, trajs, args, model=None, is_train=True):    
+def deepmaxent_irl(feat_map, P_a, trajs, args, model=None):    
     """
     Deep Maximum Entropy Inverse Reinforcement Learning (Deep Maxent IRL)
 
@@ -152,69 +202,68 @@ def deepmaxent_irl(feat_map, P_a, trajs, args, model=None, is_train=True):
     else:
         model = model.to(device)
 
-    if is_train:
-        optimizer = torch.optim.AdamW(
-            model.parameters(), 
-            lr=args.learning_rate, 
-            weight_decay=args.weight_decay
-        )
+    optimizer = torch.optim.AdamW(
+        model.parameters(), 
+        lr=args.learning_rate, 
+        weight_decay=args.weight_decay
+    )
 
-        # training
-        if args.verbose == 1:
-            progressbar = tqdm_progressbar(range(args.n_iters), total=args.n_iters, leave=False)
-        elif args.verbose == 2:
-            progressbar = tqdm_notebook_progressbar(range(args.n_iters), total=args.n_iters, leave=True)
-        else:
-            progressbar = range(args.n_iters)
+    # training
+    if args.verbose == 1:
+        progressbar = tqdm_progressbar(range(args.n_iters), total=args.n_iters, leave=False)
+    elif args.verbose == 2:
+        progressbar = tqdm_notebook_progressbar(range(args.n_iters), total=args.n_iters, leave=True)
+    else:
+        progressbar = range(args.n_iters)
 
-        model.train()
-        for iteration in progressbar:
-            # zero gradients
-            optimizer.zero_grad()
+    model.train()
+    for iteration in progressbar:
+        # zero gradients
+        optimizer.zero_grad()
 
-            # compute reward
-            rewards = model(inputs)
-            rewards_numpy = rewards.view(-1).detach().cpu().numpy()
-            
-            # approximate value iteration
-            _, policy = value_iteration(P_a, rewards_numpy, 
-                                        gamma=args.gamma, 
-                                        alpha=args.alpha, 
-                                        error=args.error, 
-                                        deterministic=False)
+        # compute reward
+        rewards = model(inputs)
+        rewards_numpy = rewards.view(-1).detach().cpu().numpy()
+        
+        # approximate value iteration
+        _, policy = value_iteration(P_a, rewards_numpy, 
+                                    gamma=args.gamma, 
+                                    alpha=args.alpha, 
+                                    error=args.error, 
+                                    deterministic=False)
 
-            # propagate policy: expected state visitation frequencies
-            mu_exp = compute_state_visition_freq(P_a, trajs, policy, deterministic=False)
+        # propagate policy: expected state visitation frequencies
+        mu_exp = compute_state_visition_freq(P_a, trajs, policy, deterministic=False)
 
-            # compute gradient on rewards
-            grad_r = mu_D - mu_exp
-            grad_r = torch.from_numpy(grad_r).float().view(-1, 1).to(device)
-            rewards.backward(-grad_r)
+        # compute gradient on rewards
+        grad_r = mu_D - mu_exp
+        grad_r = torch.from_numpy(grad_r).float().view(-1, 1).to(device)
+        rewards.backward(-grad_r)
 
-            # for records calculate l2 loss
-            l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().item()
-            # clip gradients
-            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip) 
+        # for records calculate l2 loss
+        l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().item()
+        # clip gradients
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip) 
 
-            # update parameters
-            optimizer.step()
-            # grad_theta, l2_loss = get_grad_theta(args, rewards, model, grad_r)
-            # apply_gradient(model, grad_theta, args)
+        # update parameters
+        optimizer.step()
+        # grad_theta, l2_loss = get_grad_theta(args, rewards, model, grad_r)
+        # apply_gradient(model, grad_theta, args)
 
-            if args.verbose != 0:
-                progressbar.set_description_str(f'l2 loss = {l2_loss:.4f}')
-            
-            if (args.verbose == 0) and (iteration % (args.n_iters/20) == 0):
-                print(f'iteration: {iteration}/{args.n_iters} l2 loss = {l2_loss:.4f}')
-                # print('rewards')
-                # print(rewards_numpy.reshape(args.height, args.width, order='F'))
-                # print(f'Grad r')
-                # print(grad_r.view(-1).detach().cpu().numpy().round(6))
-                # for ln, lp in model.named_parameters():
-                #     print(f'gradient of layer {ln}')
-                #     print(lp.grad[:10])
-                # print('Grad Theta')
-                # print(grad_theta[0].view(-1).detach().cpu().numpy().round(6)[:10])
+        if args.verbose != 0:
+            progressbar.set_description_str(f'l2 loss = {l2_loss:.4f}')
+        
+        if (args.verbose == 0) and (iteration % (args.n_iters/20) == 0):
+            print(f'iteration: {iteration}/{args.n_iters} l2 loss = {l2_loss:.4f}')
+            # print('rewards')
+            # print(rewards_numpy.reshape(args.height, args.width, order='F'))
+            # print(f'Grad r')
+            # print(grad_r.view(-1).detach().cpu().numpy().round(6))
+            # for ln, lp in model.named_parameters():
+            #     print(f'gradient of layer {ln}')
+            #     print(lp.grad[:10])
+            # print('Grad Theta')
+            # print(grad_theta[0].view(-1).detach().cpu().numpy().round(6)[:10])
     
     model.eval()
     l2_loss = torch.stack([torch.sum(p.pow(2))/2 for p in model.parameters()]).sum().detach().cpu().numpy()
