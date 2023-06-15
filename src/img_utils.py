@@ -65,10 +65,10 @@ class Visualizer:
                 'trajs': self.history[search_idx]['trajs'],
                 'values': self.history[search_idx]['values'],
             }
-            if self.active:
-                info_dict['rewards_new_T'] = self.history[search_idx-1]['rewards_new_T']
-                info_dict['values_new'] = self.history[search_idx-1]['values_new']
-                info_dict['policy_new'] = self.history[search_idx-1]['policy_new']
+            if self.active and search_idx>=1:
+                info_dict['rewards_new_T'] = self.history[search_idx]['rewards_new_T']
+                info_dict['values_new'] = self.history[search_idx]['values_new']
+                info_dict['policy_new'] = self.history[search_idx]['policy_new']
 
         return info_dict
     
@@ -214,8 +214,8 @@ class Visualizer:
         env = info_dict['env']
 
         scale = 0.001
-        arrows = {0:(1,0), 1:(-1,0), 3:(0,1),2:(0,-1), 4:(0,0)}
-        colors = ['w', 'g', 'y', 'r']
+        arrows = {0:(0, 0), 1:(0,-1),2:(1,0), 3:(0,1), 4:(-1,0)}
+        colors = ['b', 'c', 'g', 'w', 'r', 'm', 'y']
 
         titles = {
             'values': 'Value Map (Recovered)',
@@ -223,7 +223,7 @@ class Visualizer:
         }
 
         traj_dict = {}
-        for e in range(1, search_idx):
+        for e in range(1, search_idx+1):
             traj_dict[e] = []
             for step in self.history[e]['trajs'][self.args.n_query-1]:
                 # print(step)
@@ -239,17 +239,24 @@ class Visualizer:
                     offs = matplotlib.transforms.ScaledTranslation( 0, -0.25,
                                     matplotlib.transforms.IdentityTransform())
                     t.set_transform( offs + trans )
-                for e in range(1, search_idx):
+                for e in range(1, search_idx+1):
+                    print(f'traj{e} :', end = '')
                     for step in traj_dict[e]:
+                        print(f'({step[0][1]}, {step[0][0]})', end = ', ')
                         # print(e, step)
-                        if step[1] == 4:
-                            ax.plot(step[0][0]+0.5, step[0][1]+0.65, colors[e]+'o')
+                        if step[1] == 1:
+                            ax.plot(step[0][1]+0.5, step[0][0]+0.65, colors[e]+'o', mec = 'k', mew = 0.5)
                         else:
-                            ax.arrow(step[0][0]+0.5, step[0][1]+0.65, scale*arrows[step[1]][0], scale*arrows[step[1]][1], head_width=0.1, color = colors[e])
+                            ax.arrow(step[0][1]+0.5, step[0][0]+0.65, scale*arrows[step[1]][1], scale*arrows[step[1]][0], head_width=0.2, head_length = 0.2, linewidth=0.5, edgecolor = 'black', fc = colors[e])
                         # break
+                # if search_idx <= 1:
+                #     x, y = env.idx2pos(info_dict['trajs'][0][0].cur_state)
+                #     ax.plot(x+0.5, y+0.5, 'bo')
+                #     print(x,y)
+                #     break
                 x, y = env.idx2pos(np.argmax(self.reshaper(info_dict['values_new'])))
                 ax.plot(x+0.5, y+0.5, 'bo')
-                # print(env.idx2pos(np.argmax(self.reshaper(info_dict['values_new']))))
+                print(env.idx2pos(np.argmax(self.reshaper(info_dict['values_new']))))
             else:
                 sns.heatmap(self.reshaper(info_dict['values_new']), annot=True, fmt='.2f', ax=ax)
         suptitle = 'Algorithm'
