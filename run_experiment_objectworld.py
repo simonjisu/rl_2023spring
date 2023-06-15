@@ -189,42 +189,42 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args):
     with open(f'{exp_name}-exp_results.pkl', 'wb') as f:
         pickle.dump(exp_results, f)
 
-def test_main(exp_infos, n_exp, n_train, n_test, exp_args, exp_dir, e_num=0):
+def test_main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args, exp_dir, e_num=0):
     save_path = Path(exp_dir)
     arch_dict = {'dnn': DeepIRLFC, 'cnn': DeepIRLCNN}
-    EXP_NAMES = ['deepmaxent_random', 'deepmaxent_active', 'deepmaxent_bald']
-    ARG_STRS = [DEEP_MAXENT_RANDOM_ARGS, DEEP_MAXENT_ACTIVE_ARGS, DEEP_MAXENT_BALD_ARGS]
-    global_progress_bar = tqdm(total=len(EXP_NAMES)*n_exp*(n_test))
-    paths = [save_path / f'{exp_name}_{e_num}' for exp_name in EXP_NAMES]
+    # EXP_NAMES = ['deepmaxent_random', 'deepmaxent_active', 'deepmaxent_bald']
+    # ARG_STRS = [DEEP_MAXENT_RANDOM_ARGS, DEEP_MAXENT_ACTIVE_ARGS, DEEP_MAXENT_BALD_ARGS]
+    global_progress_bar = tqdm(total=n_exp*(n_test))
+    # paths = [save_path / f'{exp_name}_{e_num}' for exp_name in EXP_NAMES]
     exp_info = exp_infos[e_num]
-    
-    for exp_path, arg_str_base in zip(paths, ARG_STRS):
-        for i, (test_seed, test_init_start) in enumerate(exp_info['test']):
-            arg_str = arg_str_base.format(seed=test_seed,
-                                        n_objects=exp_args['n_objects'],  
-                                        n_colours=exp_args['n_colours'],
-                                        grid_size=exp_args['grid_size'], 
-                                        learnging_rate=exp_args['learning_rate'], 
-                                        weight_decay=exp_args['weight_decay'],
-                                        n_iters=exp_args['n_iters'],
-                                        architecture=exp_args['architecture'])
-            args = parse_args_str(PARSER, arg_str)
-            
-            with open(exp_path / f'{n_train-1}-train.pkl', 'rb') as f:
-                history = pickle.load(f)
-            model_params = history[args.n_trajs]['model_paramaters']
+    exp_path = save_path / f'{exp_name}_{e_num}'
+    # for exp_path, arg_str_base in zip(paths, ARG_STRS):
+    for i, (test_seed, test_init_start) in enumerate(exp_info['test']):
+        arg_str = arg_str_base.format(seed=test_seed,
+                                    n_objects=exp_args['n_objects'],  
+                                    n_colours=exp_args['n_colours'],
+                                    grid_size=exp_args['grid_size'], 
+                                    learnging_rate=exp_args['learning_rate'], 
+                                    weight_decay=exp_args['weight_decay'],
+                                    n_iters=exp_args['n_iters'],
+                                    architecture=exp_args['architecture'])
+        args = parse_args_str(PARSER, arg_str)
+        
+        with open(exp_path / f'{n_train-1}-train.pkl', 'rb') as f:
+            history = pickle.load(f)
+        model_params = history[args.n_trajs]['model_paramaters']
 
-            model_arch = arch_dict[args.architecture]
-            init_model = model_arch(2*args.n_colours, args.hiddens, 1).to(torch.device(args.device))
-            init_model.load_state_dict(model_params)
+        model_arch = arch_dict[args.architecture]
+        init_model = model_arch(2*args.n_colours, args.hiddens, 1).to(torch.device(args.device))
+        init_model.load_state_dict(model_params)
 
-            history_test = run_deepmaxent_irl(args, 
-                                         init_start_pos=test_init_start, 
-                                         init_model=init_model)
+        history_test = run_deepmaxent_irl(args, 
+                                        init_start_pos=test_init_start, 
+                                        init_model=init_model)
 
-            with open(exp_path / f'{i}-test.pkl', 'wb') as f:
-                pickle.dump(history_test, f)
-            global_progress_bar.update(1)
+        with open(exp_path / f'{i}-test.pkl', 'wb') as f:
+            pickle.dump(history_test, f)
+        global_progress_bar.update(1)
     # with open(f'exp_results_objectworld-test.pkl', 'wb') as f:
     #     pickle.dump(res_info, f)
 
