@@ -156,7 +156,7 @@ class Visualizer:
     
     def objectworld_reward_policy(self, search_idx = -1):
         info_dict = self.get_infos(search_idx)
-        fig, axes = plt.subplots(1, 1, figsize=(5, 4), dpi=110)
+        fig, axes = plt.subplots(1, 1, figsize=(6, 4), dpi=250)
         titles = {f' (N_trajs={search_idx})'}
         
         # reward
@@ -184,8 +184,8 @@ class Visualizer:
         colors_list = [f'color{i+1}' for i in range(num_colors)]
         ow = info_dict['env']
         for (x,y), obj in ow.objects.items():
-            axes.add_patch(plt.Circle((x+0.5, y+0.5), 0.1, facecolor= colors[obj.inner_colour], alpha=1, linewidth=3, edgecolor=colors[obj.outer_colour]))
-        axes.legend([(c, 'o') for c in colors], colors_list, handler_map={tuple:MarkerHandler()}, loc = (0,-0.2), ncol = num_colors) 
+            axes.add_patch(plt.Circle((x+0.5, y+0.5), 0.1, facecolor= colors[obj.inner_colour], alpha=1, linewidth=1, edgecolor=colors[obj.outer_colour]))
+        axes.legend([(c, 'o') for c in colors], colors_list, handler_map={tuple:MarkerHandler()}, loc = (0,-0.2), ncol = num_colors, fontsize = 'small') 
 
         plt.tight_layout()
         if self.file_path is not None:
