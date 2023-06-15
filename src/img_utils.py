@@ -7,10 +7,9 @@ from matplotlib.colors import ListedColormap
 import math
 
 
-
 def get_evd(history):
     values_gt = history[0]['values_gt']
-    idxs = list(history.keys())[1:-1]
+    idxs = list(history.keys())[1:]
     evds = []
     for i in idxs:
         vd_mean = np.abs(values_gt - history[i]['values']).mean()
