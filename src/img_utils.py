@@ -180,11 +180,11 @@ class Visualizer:
 
         # object
         num_colors = self.args.n_colours
-        colors = [plt.cm.Dark2(i) for i in range(num_colors)] # cm.Set1도 찮찮
+        colors = [plt.cm.Set1(i) for i in range(num_colors)] # cm.Set1, Dark2도 찮찮
         colors_list = [f'color{i+1}' for i in range(num_colors)]
         ow = info_dict['env']
         for (x,y), obj in ow.objects.items():
-            axes.add_patch(plt.Circle((x+0.5, y+0.5), 0.1, facecolor= colors[obj.inner_colour], alpha=1, linewidth=1, edgecolor=colors[obj.outer_colour]))
+            axes.add_patch(plt.Circle((y+0.5, x+0.5), 0.1, facecolor= colors[obj.inner_colour], alpha=1, linewidth=1, edgecolor=colors[obj.outer_colour]))
         axes.legend([(c, 'o') for c in colors], colors_list, handler_map={tuple:MarkerHandler()}, loc = (0,-0.2), ncol = num_colors, fontsize = 'small') 
 
         plt.tight_layout()
