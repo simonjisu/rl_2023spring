@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from src.deepmaxent_irl import DeepIRLFC
+from src.deepmaxent_irl import DeepIRLFC, DeepIRLCNN
 from src.deepmaxent_irl_objectworld import run_deepmaxent_irl
 from src.img_utils import get_evd
 from src.argument_parser import get_parser, parse_args_str
@@ -116,6 +116,9 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size):
     if not save_path.exists():
         save_path.mkdir()
     exp_results = []
+
+    arch_dict = {'dnn': DeepIRLFC, 'cnn': DeepIRLCNN}
+    
     
     for e_num in range(n_exp):
         exp_info = exp_infos[e_num]
@@ -130,10 +133,11 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size):
             global_progress_bar.set_description_str(f'[EXP-{e_num}] train {i}-{train_seed}')
             arg_str = arg_str_base.format(grid_size=grid_size, seed=train_seed)
             args = parse_args_str(PARSER, arg_str)
+            model_arch = arch_dict[args.archtecture]
             if i == 0:
                 init_model = None
             else:
-                init_model = DeepIRLFC(2*args.n_colours, args.hiddens, 1).to(torch.device(args.device))
+                init_model = model_arch(2*args.n_colours, args.hiddens, 1).to(torch.device(args.device))
                 init_model.load_state_dict(history[args.n_trajs]['model_paramaters'])
             history = run_deepmaxent_irl(args, 
                                          init_start_pos=train_init_start, 
@@ -147,7 +151,9 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size):
         # Testing
         with open(exp_path / f'{n_train-1}-train.pkl', 'rb') as f:
             history = pickle.load(f)
-        init_model = DeepIRLFC(2*args.n_colours, args.hiddens, 1).to(torch.device(args.device))
+        
+        model_arch = arch_dict[args.archtecture]
+        init_model = model_arch(2*args.n_colours, args.hiddens, 1).to(torch.device(args.device))
         init_model.load_state_dict(history[args.n_trajs]['model_paramaters'])
         for i, (test_seed, test_init_start) in enumerate(exp_info['test']):
             global_progress_bar.set_description_str(f'[EXP-{e_num}] test {i}-{test_seed}')
@@ -170,7 +176,7 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size):
 if __name__ == '__main__':
     ARG_STRS = [DEEP_MAXENT_RANDOM_ARGS, DEEP_MAXENT_ACTIVE_ARGS, DEEP_MAXENT_BALD_ARGS]
     EXP_NAMES = ['deepmaxent_random', 'deepmaxent_active', 'deepmaxent_bald']
-    n_exp = 8
+    n_exp = 1
     n_train = 8
     n_test = 4
     grid_size = 16

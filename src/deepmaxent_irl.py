@@ -7,26 +7,50 @@ from tqdm import tqdm as tqdm_progressbar
 from tqdm.notebook import tqdm as tqdm_notebook_progressbar
 
 class DeepIRLFC(nn.Module):
-    def __init__(self, input_dim, hiddens: list[int], ouptut_dim: int=1):
+    def __init__(self, input_dim, hiddens: list[int], output_dim: int=1):
         super(DeepIRLFC, self).__init__()
         self.input_dim = input_dim
         self.hiddens = hiddens
-        self.output_dim = ouptut_dim
+        self.output_dim = output_dim
         self.layers = nn.Sequential(
             nn.Linear(self.input_dim, self.hiddens[0]),
             nn.ELU(),
-            # nn.Dropout(0.25),
+            nn.Dropout(0.25),
             nn.Linear(self.hiddens[0], self.hiddens[1]),
             nn.ELU(),
-            nn.Dropout(0.5),
+            nn.Dropout(0.25),
             nn.Linear(self.hiddens[1], self.output_dim),  # reward
-            nn.Tanh()
+            #nn.Tanh()
         )
 
     def forward(self, x):
         """Get reward"""
         x = self.layers(x)
         return x
+
+class DeepIRLCNN(nn.Module):
+    def __init__(self, input_dim, hiddens: list[int], output_dim: int=1):
+        super(DeepIRLCNN, self).__init__()
+        self.input_dim = input_dim
+        self.hiddens = hiddens
+        self.output_dim = output_dim
+        self.layers = nn.Sequential(
+            nn.Conv2d(input_dim, hiddens[0], kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Dropout(0.25),
+            nn.Conv2d(hiddens[0], hiddens[1], kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Conv2d(hiddens[1], output_dim, kernel_size=3, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+    def forward(self, x):
+        """Get reward"""
+        grid_size = int(np.sqrt(x.size(0)))
+        x = x.view(grid_size, grid_size, self.input_dim).permute(2, 1, 0)[None,]
+        x = self.layers(x).squeeze()
+        return x.permute(1, 0).reshape(-1, 1)
 
 def compute_state_visition_freq(P_a: np.ndarray, trajs, policy: np.ndarray, deterministic:bool=True):
     """compute the expected states visition frequency p(s| theta, T) 
@@ -119,7 +143,12 @@ def deepmaxent_irl(feat_map, P_a, trajs, args, model=None, is_train=True):
     inputs = torch.from_numpy(feat_map).float().to(device)
 
     if model is None:
-        model = DeepIRLFC(input_dim=feat_map.shape[1], hiddens=args.hiddens, ouptut_dim=1).to(device)
+        if args.architecture == 'dnn':
+            model = DeepIRLFC(input_dim=feat_map.shape[1], hiddens=args.hiddens, output_dim=1).to(device)
+        elif args.architecture == 'cnn':
+            model = DeepIRLCNN(input_dim=feat_map.shape[1], hiddens=args.hiddens, output_dim=1).to(device)
+        else:
+            raise NotImplementedError('Unknown architecture: {}'.format(args.architecture))
     else:
         model = model.to(device)
 
