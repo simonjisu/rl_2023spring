@@ -176,7 +176,7 @@ class Visualizer:
             argmax_policy = np.argmax(info_dict['policy'], axis=1)
         for i in range(self.args.height):
             for j in range(self.args.width):
-                axes.arrow(j+0.5, i+0.5, scale*arrows[self.reshaper(argmax_policy)[i, j]][0], scale*arrows[self.reshaper(argmax_policy)[i, j]][1], head_width=0.2, head_length = 0.2, edgecolor = 'black', fc = 'w')
+                axes.arrow(j+0.5, i+0.5, scale*arrows[self.reshaper(argmax_policy)[i, j]][0], scale*arrows[self.reshaper(argmax_policy)[i, j]][1], head_width=0.2, head_length = 0.2, linewidth=0.5, edgecolor = 'black', fc = 'w')
 
         # object
         num_colors = self.args.n_colours
