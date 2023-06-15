@@ -16,8 +16,8 @@ PARSER = get_parser()
 DEEP_MAXENT_ACTIVE_ARGS = """
 --exp_name deepmaxent_active
 --type object
---n_objects 50
---n_colours 6
+--n_objects {n_objects}
+--n_colours {n_colours}
 --height {grid_size}
 --width {grid_size}
 --gamma 0.9
@@ -43,8 +43,8 @@ DEEP_MAXENT_ACTIVE_ARGS = """
 DEEP_MAXENT_RANDOM_ARGS = """
 --exp_name deepmaxent_random
 --type object
---n_objects 50
---n_colours 6
+--n_objects {n_objects}
+--n_colours {n_colours}
 --height {grid_size}
 --width {grid_size}
 --gamma 0.9
@@ -69,8 +69,8 @@ DEEP_MAXENT_RANDOM_ARGS = """
 DEEP_MAXENT_BALD_ARGS = """
 --exp_name deepmaxent_bald
 --type object
---n_objects 50
---n_colours 6
+--n_objects {n_objects}
+--n_colours {n_colours}
 --height {grid_size}
 --width {grid_size}
 --gamma 0.9
@@ -113,7 +113,7 @@ def create_seeds(n_exp, n_train, n_test):
     with open('exp_infos.pkl', 'wb') as f:
         pickle.dump(exp_infos, f)
 
-def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size, exp_args):
+def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args):
     global_progress_bar = tqdm(total=n_exp*(n_train+n_test))
     save_path = Path('exp_results')
     if not save_path.exists():
@@ -133,7 +133,10 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size, e
         res_info = defaultdict(list)
         for i, (train_seed, train_init_start) in enumerate(exp_info['train']):
             global_progress_bar.set_description_str(f'[EXP-{e_num}] train {i}-{train_seed}')
-            arg_str = arg_str_base.format(grid_size=grid_size, seed=train_seed, 
+            arg_str = arg_str_base.format(seed=train_seed, 
+                                          n_objects=exp_args['n_objects'],  
+                                          n_colours=exp_args['n_colours'],
+                                          grid_size=exp_args['grid_size'], 
                                           learnging_rate=exp_args['learning_rate'], 
                                           weight_decay=exp_args['weight_decay'],
                                           n_iters=exp_args['n_iters'])
@@ -162,7 +165,10 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size, e
         init_model.load_state_dict(history[args.n_trajs]['model_paramaters'])
         for i, (test_seed, test_init_start) in enumerate(exp_info['test']):
             global_progress_bar.set_description_str(f'[EXP-{e_num}] test {i}-{test_seed}')
-            arg_str = arg_str_base.format(grid_size=grid_size, seed=test_seed, 
+            arg_str = arg_str_base.format(seed=test_seed,
+                                          n_objects=exp_args['n_objects'],  
+                                          n_colours=exp_args['n_colours'],
+                                          grid_size=exp_args['grid_size'], 
                                           learnging_rate=exp_args['learning_rate'], 
                                           weight_decay=exp_args['weight_decay'],
                                           n_iters=exp_args['n_iters'])
@@ -187,8 +193,11 @@ if __name__ == '__main__':
     n_exp = 1
     n_train = 8
     n_test = 4
-    grid_size = 8
+    
     exp_args = dict(
+        n_objects = 12,
+        n_colours = 2,
+        grid_size = 8,
         n_iters = 100,
         learning_rate = 0.02,
         weight_decay = 0.5
@@ -204,4 +213,4 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--exp', type=int, help='base arguments')
     parser.add_argument('-i', '--index', type=int, default=0, help='restart index of seed')
     args = parser.parse_args()
-    main(exp_infos, ARG_STRS[args.exp], EXP_NAMES[args.exp], n_exp, n_train, n_test, grid_size, exp_args)
+    main(exp_infos, ARG_STRS[args.exp], EXP_NAMES[args.exp], n_exp, n_train, n_test, exp_args)

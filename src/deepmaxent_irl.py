@@ -41,7 +41,7 @@ class DeepIRLCNN(nn.Module):
             nn.Conv2d(hiddens[0], hiddens[1], kernel_size=3, stride=1, padding=1),
             nn.ELU(),
             nn.Dropout(0.25),
-            nn.Conv2d(hiddens[1], output_dim, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(hiddens[1], output_dim, kernel_size=1, stride=1, padding=0),
             nn.Tanh()
         )
 

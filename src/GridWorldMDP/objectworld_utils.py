@@ -57,19 +57,20 @@ def generate_demonstrations(ow, policy, n_trajs=100, len_traj=20, rand_start=Fal
         trajs.append(episode)
     return trajs
 
-def init_object_world(args):
+def init_object_world(args, rand_seed=False):
     # init the objectworld
     # args should contain : grid_size, n_objects, n_colours, act_random
     # return : Object world, transition matrix, ground truth value map, ground truth policy, feature_map
     if args.verbose != 1:
         print('[INFO] Initialize Object World')
-    if args.seed != 'none':
+    
+    if not rand_seed and (args.seed != 'none'):
         try:
             seed = int(args.seed)
             np.random.seed(seed)
         except ValueError:
             raise ValueError('Seed must be converted to an integer')
-    
+
     ow = Objectworld(args.height, args.n_objects, args.n_colours, args.act_random)
     rewards_gt = np.reshape(ow.reward_update(), args.height*args.height, order='F')
     feature_map = ow.feature_matrix(discrete=False)

@@ -96,11 +96,12 @@ def run_deepmaxent_irl(args, init_start_pos=None, init_model=None, is_train=True
 
         if args.verbose != 1:
             # ---------디버깅을 위해 임시로 추가--------------
-            _, P_a_test, rewards_gt_test, values_gt_test, _, feat_map_test = init_object_world(args)
+            _, P_a_test, rewards_gt_test, values_gt_test, _, feat_map_test = init_object_world(args, rand_seed=True)
             device = torch.device(args.device)
             test_inputs = torch.from_numpy(feat_map_test).float().to(device)
             model.eval()
-            rewards_test = model(test_inputs)
+            with torch.no_grad():
+                rewards_test = model(test_inputs)
             rewards_numpy_test = rewards_test.view(-1).detach().cpu().numpy()
             _, policy_test = value_iteration(P_a_test, rewards_numpy_test, args.gamma, args.alpha, args.error, deterministic=False)
             test_values = policy_evaluation(P_a_test, rewards_gt_test, policy_test, args.gamma, error=args.error)
