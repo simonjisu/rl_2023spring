@@ -4,9 +4,15 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.colors import ListedColormap
+from matplotlib.patches import Patch
+from matplotlib.legend_handler import HandlerBase
 import math
 
-
+class MarkerHandler(HandlerBase):
+    def create_artists(self, legend, tup,xdescent, ydescent,
+                        width, height, fontsize,trans):
+        return [plt.Line2D([width/2], [height/2.],ls="",
+                       marker=tup[1],color=tup[0], transform=trans)]
 
 def get_evd(history):
     values_gt = history[0]['values_gt']
@@ -173,10 +179,13 @@ class Visualizer:
                 axes.arrow(j+0.5, i+0.5, scale*arrows[self.reshaper(argmax_policy)[i, j]][0], scale*arrows[self.reshaper(argmax_policy)[i, j]][1], head_width=0.2, head_length = 0.2, edgecolor = 'black', fc = 'w')
 
         # object
-        colors = [plt.cm.Set1(i) for i in range(self.args.n_colours)]
+        num_colors = self.args.n_colours
+        colors = [plt.cm.Dark2(i) for i in range(num_colors)] # cm.Set1도 찮찮
+        colors_list = [f'color{i+1}' for i in range(num_colors)]
         ow = info_dict['env']
         for (x,y), obj in ow.objects.items():
             axes.add_patch(plt.Circle((x+0.5, y+0.5), 0.1, facecolor= colors[obj.inner_colour], alpha=1, linewidth=3, edgecolor=colors[obj.outer_colour]))
+        axes.legend([(c, 'o') for c in colors], colors_list, handler_map={tuple:MarkerHandler()}, loc = (0,-0.2), ncol = num_colors) 
 
         plt.tight_layout()
         if self.file_path is not None:
@@ -184,7 +193,7 @@ class Visualizer:
         plt.show()
         return None
 
-    def draw_acq_maps_w_trajs(self, search_idx = -1, file_path=None):
+    def draw_acq_maps_w_trajs(self, search_idx = 1, file_path=None):
         fig, axes = plt.subplots(1, 2, figsize = (10,4))        
         info_dict = self.get_infos(search_idx)
         env = info_dict['env']
