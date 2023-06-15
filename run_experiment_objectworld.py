@@ -24,19 +24,20 @@ DEEP_MAXENT_ACTIVE_ARGS = """
 --act_random 0.3
 --n_trajs 10
 --l_traj 8
---learning_rate 0.05
---n_iters 20
+--learning_rate {learnging_rate}
+--n_iters {n_iters}
 --alpha 0.1
 --n_query 1
 --r_max 1
 --error 0.01
 --grad_clip 0.5
---weight_decay 3.0
+--weight_decay {weight_decay}
 --hiddens 8 8
 --device cuda
 --active
 --seed {seed}
 --verbose 1
+--architecture cnn
 """
 
 DEEP_MAXENT_RANDOM_ARGS = """
@@ -50,18 +51,19 @@ DEEP_MAXENT_RANDOM_ARGS = """
 --act_random 0.3
 --n_trajs 10
 --l_traj 8
---learning_rate 0.05
---n_iters 20
+--learning_rate {learnging_rate}
+--n_iters {n_iters}
 --alpha 0.1
 --n_query 1
 --r_max 1
 --error 0.01
 --grad_clip 0.5
---weight_decay 3.0
+--weight_decay {weight_decay}
 --hiddens 8 8
 --device cuda
 --seed {seed}
 --verbose 1
+--architecture cnn
 """
 
 DEEP_MAXENT_BALD_ARGS = """
@@ -75,19 +77,20 @@ DEEP_MAXENT_BALD_ARGS = """
 --act_random 0.3
 --n_trajs 10
 --l_traj 8
---learning_rate 0.05
---n_iters 20
+--learning_rate {learnging_rate}
+--n_iters {n_iters}
 --alpha 0.1
 --n_query 1
 --r_max 1
 --error 0.01
 --grad_clip 0.5
---weight_decay 3.0
+--weight_decay {weight_decay}
 --hiddens 8 8
 --device cuda
 --new_active
 --seed {seed}
 --verbose 1
+--architecture cnn
 """
 
 def create_seeds(n_exp, n_train, n_test):
@@ -110,7 +113,7 @@ def create_seeds(n_exp, n_train, n_test):
     with open('exp_infos.pkl', 'wb') as f:
         pickle.dump(exp_infos, f)
 
-def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size):
+def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size, exp_args):
     global_progress_bar = tqdm(total=n_exp*(n_train+n_test))
     save_path = Path('exp_results')
     if not save_path.exists():
@@ -118,7 +121,6 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size):
     exp_results = []
 
     arch_dict = {'dnn': DeepIRLFC, 'cnn': DeepIRLCNN}
-    
     
     for e_num in range(n_exp):
         exp_info = exp_infos[e_num]
@@ -131,9 +133,12 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size):
         res_info = defaultdict(list)
         for i, (train_seed, train_init_start) in enumerate(exp_info['train']):
             global_progress_bar.set_description_str(f'[EXP-{e_num}] train {i}-{train_seed}')
-            arg_str = arg_str_base.format(grid_size=grid_size, seed=train_seed)
+            arg_str = arg_str_base.format(grid_size=grid_size, seed=train_seed, 
+                                          learnging_rate=exp_args['learning_rate'], 
+                                          weight_decay=exp_args['weight_decay'],
+                                          n_iters=exp_args['n_iters'])
             args = parse_args_str(PARSER, arg_str)
-            model_arch = arch_dict[args.archtecture]
+            model_arch = arch_dict[args.architecture]
             if i == 0:
                 init_model = None
             else:
@@ -152,12 +157,15 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, grid_size):
         with open(exp_path / f'{n_train-1}-train.pkl', 'rb') as f:
             history = pickle.load(f)
         
-        model_arch = arch_dict[args.archtecture]
+        model_arch = arch_dict[args.architecture]
         init_model = model_arch(2*args.n_colours, args.hiddens, 1).to(torch.device(args.device))
         init_model.load_state_dict(history[args.n_trajs]['model_paramaters'])
         for i, (test_seed, test_init_start) in enumerate(exp_info['test']):
             global_progress_bar.set_description_str(f'[EXP-{e_num}] test {i}-{test_seed}')
-            arg_str = arg_str_base.format(grid_size=grid_size, seed=test_seed)
+            arg_str = arg_str_base.format(grid_size=grid_size, seed=test_seed, 
+                                          learnging_rate=exp_args['learning_rate'], 
+                                          weight_decay=exp_args['weight_decay'],
+                                          n_iters=exp_args['n_iters'])
             args = parse_args_str(PARSER, arg_str)
             history = run_deepmaxent_irl(args, 
                                          init_start_pos=test_init_start, 
@@ -179,7 +187,13 @@ if __name__ == '__main__':
     n_exp = 1
     n_train = 8
     n_test = 4
-    grid_size = 16
+    grid_size = 8
+    exp_args = dict(
+        n_iters = 100,
+        learning_rate = 0.02,
+        weight_decay = 0.5
+    )
+    
     if not Path('exp_infos.pkl').exists():
         create_seeds(n_exp, n_train, n_test)
     with open('exp_infos.pkl', 'rb') as f:
@@ -190,4 +204,4 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--exp', type=int, help='base arguments')
     parser.add_argument('-i', '--index', type=int, default=0, help='restart index of seed')
     args = parser.parse_args()
-    main(exp_infos, ARG_STRS[args.exp], EXP_NAMES[args.exp], n_exp, n_train, n_test, grid_size)
+    main(exp_infos, ARG_STRS[args.exp], EXP_NAMES[args.exp], n_exp, n_train, n_test, grid_size, exp_args)
