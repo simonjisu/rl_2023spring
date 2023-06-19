@@ -22,7 +22,7 @@ DEEP_MAXENT_ACTIVE_ARGS = """
 --width {grid_size}
 --gamma 0.9
 --act_random 0.3
---n_trajs 10
+--n_trajs {n_trajs}
 --l_traj 8
 --learning_rate {learnging_rate}
 --n_iters {n_iters}
@@ -30,7 +30,7 @@ DEEP_MAXENT_ACTIVE_ARGS = """
 --n_query 1
 --r_max 1
 --error 0.01
---grad_clip 0.1
+--grad_clip {grad_clip}
 --weight_decay {weight_decay}
 --hiddens {hiddens}
 --device cuda
@@ -49,7 +49,7 @@ DEEP_MAXENT_RANDOM_ARGS = """
 --width {grid_size}
 --gamma 0.9
 --act_random 0.3
---n_trajs 10
+--n_trajs {n_trajs}
 --l_traj 8
 --learning_rate {learnging_rate}
 --n_iters {n_iters}
@@ -57,7 +57,7 @@ DEEP_MAXENT_RANDOM_ARGS = """
 --n_query 1
 --r_max 1
 --error 0.01
---grad_clip 0.1
+--grad_clip {grad_clip}
 --weight_decay {weight_decay}
 --hiddens {hiddens}
 --device cuda
@@ -75,7 +75,7 @@ DEEP_MAXENT_BALD_ARGS = """
 --width {grid_size}
 --gamma 0.9
 --act_random 0.3
---n_trajs 10
+--n_trajs {n_trajs}
 --l_traj 8
 --learning_rate {learnging_rate}
 --n_iters {n_iters}
@@ -83,7 +83,7 @@ DEEP_MAXENT_BALD_ARGS = """
 --n_query 1
 --r_max 1
 --error 0.01
---grad_clip 0.1
+--grad_clip {grad_clip}
 --weight_decay {weight_decay}
 --hiddens {hiddens}
 --device cuda
@@ -137,10 +137,12 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args, ex
                                           n_objects=exp_args['n_objects'],  
                                           n_colours=exp_args['n_colours'],
                                           grid_size=exp_args['grid_size'], 
+                                          n_trajs=exp_args['n_trajs'],
                                           learnging_rate=exp_args['learning_rate'], 
                                           weight_decay=exp_args['weight_decay'],
                                           n_iters=exp_args['n_iters'],
                                           hiddens=exp_args['hiddens'],
+                                          grad_clip=exp_args['grad_clip'],
                                           architecture=exp_args['architecture'])
             args = parse_args_str(PARSER, arg_str)
             model_arch = arch_dict[args.architecture]
@@ -172,10 +174,12 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args, ex
                                           n_objects=exp_args['n_objects'],  
                                           n_colours=exp_args['n_colours'],
                                           grid_size=exp_args['grid_size'], 
+                                          n_trajs=exp_args['n_trajs'],
                                           learnging_rate=exp_args['learning_rate'], 
                                           weight_decay=exp_args['weight_decay'],
                                           n_iters=exp_args['n_iters'],
                                           hiddens=exp_args['hiddens'],
+                                          grad_clip=exp_args['grad_clip'],
                                           architecture=exp_args['architecture'])
             args_test = parse_args_str(PARSER, arg_str_test)
             history_test = run_deepmaxent_irl(args_test, 
@@ -206,9 +210,12 @@ def test_main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_arg
                                     n_objects=exp_args['n_objects'],  
                                     n_colours=exp_args['n_colours'],
                                     grid_size=exp_args['grid_size'], 
+                                    n_trajs=exp_args['n_trajs'],
                                     learnging_rate=exp_args['learning_rate'], 
                                     weight_decay=exp_args['weight_decay'],
                                     n_iters=exp_args['n_iters'],
+                                    hiddens=exp_args['hiddens'],
+                                    grad_clip=exp_args['grad_clip'],
                                     architecture=exp_args['architecture'])
         args = parse_args_str(PARSER, arg_str)
         
@@ -238,13 +245,15 @@ if __name__ == '__main__':
     n_test = 4
     exp_dir = 'exp_results3'
     exp_args = dict(
-        n_objects = 12,
+        n_objects = 15,
         n_colours = 2,
-        grid_size = 8,
-        n_iters = 25,
-        learning_rate = 0.025,
-        weight_decay = 1.5,
-        hiddens = '16 8',
+        grid_size = 10,
+        n_trajs = 20,
+        n_iters = 50,
+        grad_clip = 100.0,
+        learning_rate = 0.01,
+        weight_decay = 0,
+        hiddens = '3 3',
         architecture='dnn'
     )
     
