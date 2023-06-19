@@ -129,5 +129,5 @@ dmypy.json
 .pyre/
 .vscode
 irl-imitation
-exp_results
-exp_results2
+exp_results*
+*.zip

@@ -30,9 +30,9 @@ DEEP_MAXENT_ACTIVE_ARGS = """
 --n_query 1
 --r_max 1
 --error 0.01
---grad_clip 0.5
+--grad_clip 0.1
 --weight_decay {weight_decay}
---hiddens 8 8
+--hiddens {hiddens}
 --device cuda
 --active
 --seed {seed}
@@ -57,9 +57,9 @@ DEEP_MAXENT_RANDOM_ARGS = """
 --n_query 1
 --r_max 1
 --error 0.01
---grad_clip 0.5
+--grad_clip 0.1
 --weight_decay {weight_decay}
---hiddens 8 8
+--hiddens {hiddens}
 --device cuda
 --seed {seed}
 --verbose 1
@@ -83,9 +83,9 @@ DEEP_MAXENT_BALD_ARGS = """
 --n_query 1
 --r_max 1
 --error 0.01
---grad_clip 0.5
+--grad_clip 0.1
 --weight_decay {weight_decay}
---hiddens 8 8
+--hiddens {hiddens}
 --device cuda
 --new_active
 --seed {seed}
@@ -113,9 +113,9 @@ def create_seeds(n_exp, n_train, n_test, grid_size=8):
     with open('exp_infos.pkl', 'wb') as f:
         pickle.dump(exp_infos, f)
 
-def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args):
+def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args, exp_dir='exp_results'):
     global_progress_bar = tqdm(total=n_exp*(n_train+n_test))
-    save_path = Path('exp_results')
+    save_path = Path(exp_dir)
     if not save_path.exists():
         save_path.mkdir()
     exp_results = []
@@ -140,6 +140,7 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args):
                                           learnging_rate=exp_args['learning_rate'], 
                                           weight_decay=exp_args['weight_decay'],
                                           n_iters=exp_args['n_iters'],
+                                          hiddens=exp_args['hiddens'],
                                           architecture=exp_args['architecture'])
             args = parse_args_str(PARSER, arg_str)
             model_arch = arch_dict[args.architecture]
@@ -174,6 +175,7 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args):
                                           learnging_rate=exp_args['learning_rate'], 
                                           weight_decay=exp_args['weight_decay'],
                                           n_iters=exp_args['n_iters'],
+                                          hiddens=exp_args['hiddens'],
                                           architecture=exp_args['architecture'])
             args_test = parse_args_str(PARSER, arg_str_test)
             history_test = run_deepmaxent_irl(args_test, 
@@ -186,7 +188,7 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args):
 
         exp_results.append(res_info)
         
-    with open(f'{exp_name}-exp_results.pkl', 'wb') as f:
+    with open(save_path / f'{exp_name}-exp_results.pkl', 'wb') as f:
         pickle.dump(exp_results, f)
 
 def test_main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args, exp_dir, e_num=0):
@@ -231,17 +233,18 @@ def test_main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_arg
 if __name__ == '__main__':
     ARG_STRS = [DEEP_MAXENT_RANDOM_ARGS, DEEP_MAXENT_ACTIVE_ARGS, DEEP_MAXENT_BALD_ARGS]
     EXP_NAMES = ['deepmaxent_random', 'deepmaxent_active', 'deepmaxent_bald']
-    n_exp = 1
+    n_exp = 5
     n_train = 8
     n_test = 4
-    
+    exp_dir = 'exp_results3'
     exp_args = dict(
         n_objects = 12,
         n_colours = 2,
         grid_size = 8,
-        n_iters = 50,
-        learning_rate = 0.01,
+        n_iters = 25,
+        learning_rate = 0.025,
         weight_decay = 1.5,
+        hiddens = '16 8',
         architecture='dnn'
     )
     
@@ -256,6 +259,6 @@ if __name__ == '__main__':
     parser.add_argument('--test', action='store_true', help='test mode')
     args = parser.parse_args()
     if args.test:
-        test_main(exp_infos, n_exp, n_train, n_test, exp_args, exp_dir='exp_results2', e_num=0)
+        test_main(exp_infos, n_exp, n_train, n_test, exp_args, exp_dir=exp_dir, e_num=0)
     else:
-        main(exp_infos, ARG_STRS[args.exp], EXP_NAMES[args.exp], n_exp, n_train, n_test, exp_args)
+        main(exp_infos, ARG_STRS[args.exp], EXP_NAMES[args.exp], n_exp, n_train, n_test, exp_args, exp_dir)

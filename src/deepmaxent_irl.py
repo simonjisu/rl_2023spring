@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from collections import Counter
 
 from .GridWorldMDP.value_iteration import value_iteration
 from tqdm import tqdm as tqdm_progressbar
@@ -28,12 +29,32 @@ class DeepIRLFC(nn.Module):
         x = self.layers(x)
         return x
 
+# Residual Network
 def build_block(input_dim, output_dim, kernel_size=3, stride=1, padding=1, dropout=0.25):
     return [
         nn.Conv2d(input_dim, output_dim, kernel_size=kernel_size, stride=stride, padding=padding),
         nn.ELU(),
         nn.Dropout(dropout)
     ]
+
+class ResidualBlock(nn.Module):
+    def __init__(self, in_c, out_c,  downsample=None):
+        super().__init__()
+        self.conv = nn.Sequential(
+            *build_block(in_c, out_c, kernel_size=3, stride=1, padding=1)
+        )
+        self.act = nn.ELU()
+        self.downsample = downsample
+        self.out_c = out_c
+
+    def forward(self, x):
+        identity = x
+        out = self.conv(x)
+        if self.downsample:
+            identity = self.downsample(x)
+        out += identity
+        out = self.act(out)
+        return out
 
 class DeepIRLCNN(nn.Module):
     def __init__(self, input_dim, hiddens: list[int], output_dim: int=1):
@@ -44,62 +65,44 @@ class DeepIRLCNN(nn.Module):
         self.layers = nn.ModuleList()
         
         # init block always build additional blocks as the same dim with hiddens[0]
-        self.layers.append(nn.Sequential(*build_block(input_dim, hiddens[0])))
-        self.checkers = []  # check if it is bottleneck layer
-
-        in_c = hiddens[0]
-        for i, out_c in enumerate(hiddens):
-            if out_c != in_c:
-                self.layers.append(nn.Conv2d(in_c, out_c, kernel_size=1, stride=1, padding=0))
-                self.checkers.append(True)
-                in_c = out_c
-            self.layers.append(nn.Sequential(*build_block(in_c, out_c)))
-            self.checkers.append(False)
-            in_c = out_c
+        # e.g. out_channel = hiddens = [32, 32, 16, 16, 8]
+        # first layer channel: input_dim > 32
+        # layers = {32: 2, 16: 2, 8: 1}
+        self.in_c = hiddens[0]
+        blocks_count = Counter(hiddens)
+        self.layers.append(nn.Sequential(*build_block(input_dim, self.in_c)))
+        for out_c, n_blocks in blocks_count.items():
+            self.layers.append(self.build_layers(out_c, n_blocks))
             
-            # self.layers.append(
-            #     nn.Sequential(
-            #         nn.Conv2d(input_dim, out_c, kernel_size=3, stride=1, padding=1),
-            #         nn.ELU(),
-            #         nn.Dropout(0.25)
-            #     )
-            #     if out_c != hiddens[-1]
-            # )
-            # input_dim = out_c
-        self.layers.append(
-            nn.Sequential(
-                nn.Conv2d(hiddens[-1], output_dim, kernel_size=3, stride=1, padding=1),
-                nn.Tanh()
+        # last layer
+        self.layers.append(nn.Sequential(
+            nn.Conv2d(self.in_c, output_dim, kernel_size=1, stride=1, padding=0),
+            nn.Tanh()
+        ))
+
+    def build_layers(self, out_c, n_blocks):
+        downsample = None
+        if self.in_c != out_c:
+            downsample = nn.Sequential(
+                nn.Conv2d(self.in_c, out_c, kernel_size=1, stride=1, padding=0),
+                nn.ELU()
             )
-        )
-        
+        layers = []
+        layers.append(ResidualBlock(self.in_c, out_c, downsample))
+        self.in_c = out_c
+        for l in range(1, n_blocks):
+            layers.append(ResidualBlock(self.in_c, out_c, downsample=None))
+        return nn.Sequential(*layers)
+              
     def forward(self, x):
         """Get reward"""
         grid_size = int(np.sqrt(x.size(0)))
-        # x: SxD -> 1x
+        # x: SxD -> 1xDxHxW
         x = x.view(grid_size, grid_size, self.input_dim).permute(2, 1, 0)[None,]
-        x = self.layers[0]  # (1, C, H, W)
-        for layer, checker in zip(self.layers[1:-1], self.checkers):
-            rx = x
+        for i, layer in enumerate(self.layers):
             x = layer(x)
-            # if checker:
-
-        
-        # for i, layer in enumerate(self.layers[:-1]):
-        #     print(i)
-        #     # resnet style
-        #     if i == 0:
-        #         x = layer(x)
-        #     else:
-        #         rx = x
-        #         x = layer(x)
-        #         if rx.size(1) == x.size(1):
-        #             x = x + rx
-        #         else:
-        #             x
-                
-        x = self.layers[-1](x).squeeze()
-        # x = self.layers(x).squeeze()
+        x = x.squeeze()  # 1x1xHxW -> HxW
+        # x: 1xHxW -> Sx1
         return x.permute(1, 0).reshape(-1, 1)
 
 def compute_state_visition_freq(P_a: np.ndarray, trajs, policy: np.ndarray, deterministic:bool=True):
