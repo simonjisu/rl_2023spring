@@ -249,12 +249,12 @@ if __name__ == '__main__':
         n_colours = 2,
         grid_size = 10,
         n_trajs = 20,
-        n_iters = 50,
-        grad_clip = 100.0,
-        learning_rate = 0.01,
-        weight_decay = 0,
-        hiddens = '3 3',
-        architecture='dnn'
+        n_iters = 20,
+        grad_clip = 0.5,
+        learning_rate = 0.05,
+        weight_decay = 5.0,
+        hiddens = '32 16 16',
+        architecture='cnn'
     )
     
     if not Path('exp_infos.pkl').exists():

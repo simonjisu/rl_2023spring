@@ -31,6 +31,7 @@ class Visualizer:
         self.figsize = figsize
         self.dpi = dpi
         self.args = history[0]['args']
+        self.keys = list(history.keys())
         if self.args.active:
             self.active_type = 'Uncertainty Sampling'
             self.active = True
@@ -66,9 +67,11 @@ class Visualizer:
                 'values': self.history[search_idx]['values'],
             }
             if self.active and search_idx>=1:
-                info_dict['rewards_new_T'] = self.history[search_idx]['rewards_new_T']
-                info_dict['values_new'] = self.history[search_idx]['values_new']
-                info_dict['policy_new'] = self.history[search_idx]['policy_new']
+                idx = self.keys.index(search_idx) - 1
+                last_sampling_idx = self.keys[idx]
+                info_dict['rewards_new_T'] = self.history[last_sampling_idx]['rewards_new_T']
+                info_dict['values_new'] = self.history[last_sampling_idx]['values_new']
+                info_dict['policy_new'] = self.history[last_sampling_idx]['policy_new']
 
         return info_dict
     
