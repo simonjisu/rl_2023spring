@@ -27,7 +27,7 @@ DEEP_MAXENT_ACTIVE_ARGS = """
 --learning_rate {learnging_rate}
 --n_iters {n_iters}
 --alpha 0.1
---n_query 1
+--n_query {n_query}
 --r_max 1
 --error 0.01
 --grad_clip {grad_clip}
@@ -54,7 +54,7 @@ DEEP_MAXENT_RANDOM_ARGS = """
 --learning_rate {learnging_rate}
 --n_iters {n_iters}
 --alpha 0.1
---n_query 1
+--n_query {n_query}
 --r_max 1
 --error 0.01
 --grad_clip {grad_clip}
@@ -80,7 +80,7 @@ DEEP_MAXENT_BALD_ARGS = """
 --learning_rate {learnging_rate}
 --n_iters {n_iters}
 --alpha 0.1
---n_query 1
+--n_query {n_query}
 --r_max 1
 --error 0.01
 --grad_clip {grad_clip}
@@ -142,6 +142,7 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args, ex
                                           weight_decay=exp_args['weight_decay'],
                                           n_iters=exp_args['n_iters'],
                                           hiddens=exp_args['hiddens'],
+                                          n_query=exp_args['n_query'],
                                           grad_clip=exp_args['grad_clip'],
                                           architecture=exp_args['architecture'])
             args = parse_args_str(PARSER, arg_str)
@@ -179,6 +180,7 @@ def main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_args, ex
                                           weight_decay=exp_args['weight_decay'],
                                           n_iters=exp_args['n_iters'],
                                           hiddens=exp_args['hiddens'],
+                                          n_query=exp_args['n_query'],
                                           grad_clip=exp_args['grad_clip'],
                                           architecture=exp_args['architecture'])
             args_test = parse_args_str(PARSER, arg_str_test)
@@ -215,6 +217,7 @@ def test_main(exp_infos, arg_str_base, exp_name, n_exp, n_train, n_test, exp_arg
                                     weight_decay=exp_args['weight_decay'],
                                     n_iters=exp_args['n_iters'],
                                     hiddens=exp_args['hiddens'],
+                                    n_query=exp_args['n_query'],
                                     grad_clip=exp_args['grad_clip'],
                                     architecture=exp_args['architecture'])
         args = parse_args_str(PARSER, arg_str)
@@ -243,18 +246,19 @@ if __name__ == '__main__':
     n_exp = 5
     n_train = 8
     n_test = 4
-    exp_dir = 'exp_results3'
+    exp_dir = 'exp_results5'
     exp_args = dict(
-        n_objects = 15,
+        n_objects = 12,
         n_colours = 2,
-        grid_size = 10,
-        n_trajs = 20,
-        n_iters = 20,
+        grid_size = 8,
+        n_trajs = 10,
+        n_iters = 30,
         grad_clip = 0.5,
-        learning_rate = 0.05,
-        weight_decay = 5.0,
-        hiddens = '32 16 16',
-        architecture='cnn'
+        n_query = 1,
+        learning_rate = 0.001,
+        weight_decay = 1.5,
+        hiddens = '8 8',
+        architecture='dnn'
     )
     
     if not Path('exp_infos.pkl').exists():

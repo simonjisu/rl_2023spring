@@ -16,7 +16,7 @@ class DeepIRLFC(nn.Module):
         self.layers = nn.Sequential(
             nn.Linear(self.input_dim, self.hiddens[0]),
             nn.ELU(),
-            # nn.Dropout(0.25),
+            nn.Dropout(0.25),
             nn.Linear(self.hiddens[0], self.hiddens[1]),
             nn.ELU(),
             nn.Dropout(0.25),
@@ -27,6 +27,29 @@ class DeepIRLFC(nn.Module):
     def forward(self, x):
         """Get reward"""
         x = self.layers(x)
+        return x
+
+class DeepIRLCNN(nn.Module):
+    def __init__(self, input_dim, hiddens: list[int], output_dim: int=1):
+        super(DeepIRLCNN, self).__init__()
+        self.input_dim = input_dim
+        self.hiddens = hiddens
+        self.output_dim = output_dim
+        self.layers = nn.Sequential(
+            nn.Conv1d(input_dim, hiddens[0], 5, padding=2),
+            nn.ELU(),
+            nn.Dropout(0.25),
+            nn.Conv1d(hiddens[0], hiddens[1], 3, padding=1),
+            nn.ELU(),
+            nn.Dropout(0.25),
+            nn.Conv1d(hiddens[1], output_dim, 1, padding=0),
+            nn.Tanh()
+        )
+
+    def forward(self, x):
+        x = x.permute(1, 0)[None,]  # (1, D, S)
+        x = self.layers(x)  # (1, 1, S)
+        x = x.squeeze().unsqueeze(-1)  # (S, 1)
         return x
 
 # Residual Network
@@ -56,7 +79,8 @@ class ResidualBlock(nn.Module):
         out = self.act(out)
         return out
 
-class DeepIRLCNN(nn.Module):
+
+class DeepIRLResNet(nn.Module):
     def __init__(self, input_dim, hiddens: list[int], output_dim: int=1):
         super(DeepIRLCNN, self).__init__()
         self.input_dim = input_dim
