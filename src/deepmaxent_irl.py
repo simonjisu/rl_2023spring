@@ -21,7 +21,7 @@ class DeepIRLFC(nn.Module):
             nn.ELU(),
             nn.Dropout(0.25),
             nn.Linear(self.hiddens[1], self.output_dim),  # reward
-            nn.Tanh()
+            # nn.Tanh()
         )
 
     def forward(self, x):
@@ -43,7 +43,7 @@ class DeepIRLCNN(nn.Module):
             nn.ELU(),
             nn.Dropout(0.25),
             nn.Conv1d(hiddens[1], output_dim, 1, padding=0),
-            nn.Tanh()
+            # nn.Tanh()
         )
 
     def forward(self, x):

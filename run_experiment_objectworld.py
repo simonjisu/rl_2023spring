@@ -246,7 +246,7 @@ if __name__ == '__main__':
     n_exp = 5
     n_train = 8
     n_test = 4
-    exp_dir = 'exp_results5'
+    exp_dir = 'exp_results8'
     exp_args = dict(
         n_objects = 12,
         n_colours = 2,
@@ -255,10 +255,10 @@ if __name__ == '__main__':
         n_iters = 30,
         grad_clip = 0.5,
         n_query = 1,
-        learning_rate = 0.001,
-        weight_decay = 1.5,
+        learning_rate = 0.002,
+        weight_decay = 0.8,
         hiddens = '8 8',
-        architecture='dnn'
+        architecture='cnn'
     )
     
     if not Path('exp_infos.pkl').exists():
